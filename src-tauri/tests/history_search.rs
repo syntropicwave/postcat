@@ -32,6 +32,7 @@ fn response(status: u16, body: &str) -> HttpResponseData {
         size: body.len(),
         duration_ms: 12.0,
         ttfb_ms: 6.0,
+        timings: Default::default(),
     }
 }
 

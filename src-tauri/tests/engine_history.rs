@@ -78,6 +78,16 @@ async fn request_is_executed_and_recorded() {
     assert!(resp.duration_ms > 0.0);
     assert!(resp.ttfb_ms > 0.0 && resp.ttfb_ms <= resp.duration_ms);
 
+    // Instrumented path (plain http, direct) fills the connection-phase
+    // waterfall: DNS, TCP connect and server are all measured; no TLS.
+    let t = &resp.timings;
+    assert!(t.dns_ms.is_some(), "dns phase measured");
+    assert!(t.connect_ms.is_some(), "connect phase measured");
+    assert!(t.tls_ms.is_none(), "no TLS for plain http");
+    assert!(t.server_ms > 0.0);
+    assert!(t.total_ms >= t.server_ms);
+    assert_eq!(t.redirects, 0);
+
     let store = Store::open_in_memory().unwrap();
     let id = rec(&store, &spec, Ok(&resp)).unwrap();
 

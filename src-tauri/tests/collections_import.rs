@@ -205,6 +205,7 @@ fn secrets_never_reach_history_or_index() {
         size: 34,
         duration_ms: 1.0,
         ttfb_ms: 1.0,
+        timings: Default::default(),
     };
     let id = history::record(&store, &original, &display, &resolution.secrets, Ok(&resp)).unwrap();
 

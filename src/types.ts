@@ -57,6 +57,16 @@ export interface ConsoleLine {
   message: string;
 }
 
+export interface Timings {
+  dns_ms: number | null;
+  connect_ms: number | null;
+  tls_ms: number | null;
+  server_ms: number;
+  download_ms: number;
+  total_ms: number;
+  redirects: number;
+}
+
 export interface SendResult {
   history_id: number;
   status: number;
@@ -69,6 +79,7 @@ export interface SendResult {
   size: number;
   duration_ms: number;
   ttfb_ms: number;
+  timings: Timings;
   tests: TestResult[];
   console: ConsoleLine[];
   script_error: string | null;
@@ -278,6 +289,7 @@ export interface HistoryDetail extends HistorySummary {
   resp_body_base64: string | null;
   resp_body_truncated: boolean;
   ttfb_ms: number | null;
+  timings: Timings;
 }
 
 export const HTTP_METHODS = [

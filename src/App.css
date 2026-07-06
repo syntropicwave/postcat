@@ -2132,6 +2132,104 @@ button {
   font-size: 11px;
 }
 
+/* ---------- Timing waterfall ---------- */
+
+.timing-bar-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.timing-toggle {
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.timing-bar {
+  display: inline-flex;
+  width: 120px;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+}
+
+.timing-seg {
+  height: 100%;
+}
+
+.timing-dns {
+  background: #8b5cf6;
+}
+.timing-connect {
+  background: #2f7bd9;
+}
+.timing-tls {
+  background: #d3a41b;
+}
+.timing-server {
+  background: var(--client-error);
+}
+.timing-download {
+  background: var(--ok);
+}
+
+.timing-legend {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 200px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+}
+
+.timing-note {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.timing-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.timing-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.timing-legend-label {
+  flex: 1;
+  color: var(--text-dim);
+}
+
+.timing-legend-ms {
+  font-family: var(--mono);
+}
+
+.timing-total {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 4px;
+  font-weight: 600;
+}
+
+.timing-total .timing-legend-label {
+  color: var(--text);
+}
+
 /* ---------- Method colors ---------- */
 
 .method-GET {

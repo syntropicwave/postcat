@@ -50,6 +50,7 @@ pub struct HistoryDetail {
     pub resp_body_base64: Option<String>,
     pub resp_body_truncated: bool,
     pub ttfb_ms: Option<f64>,
+    pub timings: crate::http_engine::Timings,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -141,8 +142,10 @@ pub fn record(
                     "INSERT INTO history_entries
                         (method, url, host, req_spec, req_headers, req_body_text,
                          status, status_text, http_version, resp_headers, resp_body,
-                         resp_body_text, resp_body_truncated, resp_size, duration_ms, ttfb_ms)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                         resp_body_text, resp_body_truncated, resp_size, duration_ms, ttfb_ms,
+                         dns_ms, connect_ms, tls_ms, server_ms, download_ms, redirects)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16,
+                             ?17, ?18, ?19, ?20, ?21, ?22)",
                     params![
                         spec.method,
                         spec.url,
@@ -160,6 +163,12 @@ pub fn record(
                         resp.size as i64,
                         resp.duration_ms,
                         resp.ttfb_ms,
+                        resp.timings.dns_ms,
+                        resp.timings.connect_ms,
+                        resp.timings.tls_ms,
+                        resp.timings.server_ms,
+                        resp.timings.download_ms,
+                        resp.timings.redirects,
                     ],
                 )?;
             }
@@ -465,7 +474,8 @@ pub fn get(store: &Store, id: i64) -> Result<HistoryDetail, StoreError> {
             "SELECT id, sent_at, method, url, host, status, error, duration_ms, resp_size,
                     pinned, label,
                     req_spec, req_headers, req_body_text, status_text, http_version,
-                    resp_headers, resp_body, resp_body_truncated, ttfb_ms
+                    resp_headers, resp_body, resp_body_truncated, ttfb_ms,
+                    dns_ms, connect_ms, tls_ms, server_ms, download_ms, redirects
              FROM history_entries WHERE id = ?1",
             params![id],
             |row| {
@@ -502,6 +512,15 @@ pub fn get(store: &Store, id: i64) -> Result<HistoryDetail, StoreError> {
                     resp_body_base64,
                     resp_body_truncated: row.get(18)?,
                     ttfb_ms: row.get(19)?,
+                    timings: crate::http_engine::Timings {
+                        dns_ms: row.get(20)?,
+                        connect_ms: row.get(21)?,
+                        tls_ms: row.get(22)?,
+                        server_ms: row.get::<_, Option<f64>>(23)?.unwrap_or(0.0),
+                        download_ms: row.get::<_, Option<f64>>(24)?.unwrap_or(0.0),
+                        total_ms: row.get::<_, Option<f64>>(7)?.unwrap_or(0.0),
+                        redirects: row.get::<_, i64>(25)? as u32,
+                    },
                 })
             },
         )

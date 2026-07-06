@@ -9,6 +9,7 @@ import { historySaveBody } from "../ipc/commands";
 import type { SendResult } from "../types";
 import { usePrefersDark } from "../hooks/usePrefersDark";
 import { ExtractDialog } from "./ExtractDialog";
+import { TimingBar } from "./TimingBar";
 
 type View = "pretty" | "raw" | "preview" | "headers" | "tests";
 
@@ -94,10 +95,11 @@ export function ResponseViewer({
           {response.status} {response.status_text}
         </span>
         <span className="response-meta">
-          {response.http_version} · {formatDuration(response.duration_ms)} (TTFB{" "}
-          {formatDuration(response.ttfb_ms)}) · {formatSize(response.size)}
-          {response.body_truncated ? " · body truncated" : ""}
+          {response.http_version} · {formatDuration(response.duration_ms)} ·{" "}
+          {formatSize(response.size)}
+          {response.body_truncated ? " · truncated" : ""}
         </span>
+        <TimingBar timings={response.timings} />
         <span className="response-views">
           {(["pretty", "raw", "preview", "headers"] as View[]).map((v) => (
             <button

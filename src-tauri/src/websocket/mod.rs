@@ -205,6 +205,7 @@ fn record_session(store: &Store, log: &Arc<Mutex<SessionLog>>) {
         body_truncated: false,
         duration_ms,
         ttfb_ms: 0.0,
+        timings: Default::default(),
     };
     if let Err(err) = history::record(store, &spec, &spec, &[], Ok(&resp)) {
         tracing::warn!(%err, "failed to record websocket session");

@@ -1,3 +1,5 @@
+mod timed;
+
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -167,6 +169,22 @@ impl RequestSpec {
     }
 }
 
+/// Per-phase timing waterfall. Phases before the connection is established
+/// (dns/connect/tls) are None when the request reused a pooled connection or
+/// ran through the reqwest fallback path.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Timings {
+    pub dns_ms: Option<f64>,
+    pub connect_ms: Option<f64>,
+    pub tls_ms: Option<f64>,
+    /// Connection ready → first response byte (request send + server work).
+    pub server_ms: f64,
+    /// First response byte → last byte.
+    pub download_ms: f64,
+    pub total_ms: f64,
+    pub redirects: u32,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct HttpResponseData {
     pub status: u16,
@@ -179,6 +197,7 @@ pub struct HttpResponseData {
     pub size: usize,
     pub duration_ms: f64,
     pub ttfb_ms: f64,
+    pub timings: Timings,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -198,6 +217,8 @@ pub enum EngineError {
     Certificate(String),
     #[error("invalid proxy: {0}")]
     Proxy(String),
+    #[error("{0}")]
+    Connect(String),
     #[error("{0}")]
     Request(#[from] reqwest::Error),
 }
@@ -220,6 +241,18 @@ pub async fn execute_streaming(
     app: &AppSettings,
     on_stream_chunk: Option<StreamChunkFn>,
 ) -> Result<HttpResponseData, EngineError> {
+    // The instrumented path gives a full per-phase waterfall. It handles the
+    // common case (direct connection, default trust, byte bodies). Anything
+    // it can't do cleanly falls back to reqwest with a partial breakdown.
+    if timed::eligible(spec, app) {
+        match timed::execute(jar.clone(), spec, app, on_stream_chunk.clone()).await {
+            Ok(data) => return Ok(data),
+            Err(err) => {
+                tracing::warn!(%err, "instrumented path failed, falling back to reqwest");
+            }
+        }
+    }
+
     let client = build_client(jar, &spec.settings, app)?;
     let request = build_request(&client, spec)?;
     let max_captured = (app.max_captured_body_kb as usize).max(64) * 1024;
@@ -268,6 +301,17 @@ pub async fn execute_streaming(
     }
     let duration_ms = started.elapsed().as_secs_f64() * 1000.0;
 
+    // Partial breakdown: reqwest hides the connection phases inside TTFB.
+    let timings = Timings {
+        dns_ms: None,
+        connect_ms: None,
+        tls_ms: None,
+        server_ms: ttfb_ms,
+        download_ms: (duration_ms - ttfb_ms).max(0.0),
+        total_ms: duration_ms,
+        redirects: 0,
+    };
+
     Ok(HttpResponseData {
         status: status.as_u16(),
         status_text: status.canonical_reason().unwrap_or("").to_owned(),
@@ -278,6 +322,7 @@ pub async fn execute_streaming(
         size,
         duration_ms,
         ttfb_ms,
+        timings,
     })
 }
 

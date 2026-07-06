@@ -44,6 +44,15 @@ sha2 = "0.10"
 hmac = "0.12"
 hex = "0.4"
 reqwest_cookie_store = "0.8"
+cookie_store = "0.21"
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+tokio-native-tls = "0.3"
+native-tls = "0.2"
+flate2 = "1"
+brotli = "7"
+bytes = "1"
 tauri-plugin-dialog = "2"
 
 [dev-dependencies]
