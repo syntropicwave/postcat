@@ -12,6 +12,7 @@ import {
   varsSave,
 } from "../ipc/commands";
 import type { Environment, Variable, VarScope } from "../types";
+import { Icon } from "./Icon";
 
 /** Environment switcher + manager entry point, shown in the tab bar. */
 export function EnvBar() {
@@ -48,7 +49,7 @@ export function EnvBar() {
         title="Environments & variables"
         onClick={() => setManagerOpen(true)}
       >
-        {"{x}"}
+        <Icon name="braces" />
       </button>
       {managerOpen && <EnvManager onClose={() => setManagerOpen(false)} />}
     </div>

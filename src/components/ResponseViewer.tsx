@@ -10,6 +10,7 @@ import type { SendResult } from "../types";
 import { usePrefersDark } from "../hooks/usePrefersDark";
 import { ExtractDialog } from "./ExtractDialog";
 import { TimingBar } from "./TimingBar";
+import { Icon } from "./Icon";
 
 type View = "pretty" | "raw" | "preview" | "headers" | "tests";
 
@@ -128,10 +129,11 @@ export function ResponseViewer({
           <span className="response-tools">
             {onDiffPrevious && (
               <button
+                className="tool-with-icon"
                 title="Diff vs previous response"
                 onClick={onDiffPrevious}
               >
-                ⇆ prev
+                <Icon name="diff" size={13} /> prev
               </button>
             )}
             <button
@@ -151,7 +153,7 @@ export function ResponseViewer({
               title="Copy body"
               onClick={() => copyBody(response.body_text ?? "")}
             >
-              {copied ? "✓" : "copy"}
+              {copied ? "copied" : "copy"}
             </button>
             <button
               title="Save body to file"
@@ -223,7 +225,9 @@ function ResponseBody({
         )}
         {response.tests.map((t, i) => (
           <div key={i} className={`test-row ${t.passed ? "pass" : "fail"}`}>
-            <span className="test-mark">{t.passed ? "✓" : "✗"}</span>
+            <span className="test-mark">
+              <Icon name={t.passed ? "check" : "x"} size={13} />
+            </span>
             <span className="test-name">{t.name}</span>
             {t.error && <span className="test-error">{t.error}</span>}
           </div>

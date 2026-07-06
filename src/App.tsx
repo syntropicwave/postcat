@@ -12,6 +12,7 @@ import { SyncDialog } from "./components/SyncDialog";
 import { WsPanel } from "./components/WsPanel";
 import { CommandPalette } from "./components/CommandPalette";
 import { DiffView } from "./components/DiffView";
+import { Icon } from "./components/Icon";
 import { useTabs, isWsUrl } from "./state/tabs";
 import { listen } from "@tauri-apps/api/event";
 import { historySearch } from "./ipc/commands";
@@ -117,21 +118,21 @@ function App() {
               title="Sync (end-to-end encrypted)"
               onClick={() => setSyncOpen(true)}
             >
-              ⟳
+              <Icon name="sync" />
             </button>
             <button
               className="icon-btn"
               title="Cookies"
               onClick={() => setCookiesOpen(true)}
             >
-              🍪
+              <Icon name="cookie" />
             </button>
             <button
               className="icon-btn"
               title="Settings (proxy, certificates)"
               onClick={() => setSettingsOpen(true)}
             >
-              ⚙
+              <Icon name="settings" />
             </button>
           </div>
         </div>

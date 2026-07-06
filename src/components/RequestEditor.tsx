@@ -11,6 +11,7 @@ import { VarInput } from "./VarInput";
 import { SaveDialog } from "./SaveDialog";
 import { AuthEditor } from "./AuthEditor";
 import { CodeDialog } from "./CodeDialog";
+import { Icon } from "./Icon";
 
 /** Save a bound tab in place; unbound tabs open the SaveDialog instead. */
 export async function saveBoundTab(tab: Tab): Promise<boolean> {
@@ -143,7 +144,7 @@ function SettingsPopover({ tab }: { tab: Tab }) {
         title="Request settings (timeout, redirects, SSL)"
         onClick={() => setOpen((v) => !v)}
       >
-        ⏱
+        <Icon name="clock" />
       </button>
       {open && (
         <div className="settings-popover">
@@ -277,15 +278,16 @@ export function RequestEditor({ tab }: { tab: Tab }) {
           title="Save to collection (Ctrl+S)"
           onClick={() => void saveTab(tab)}
         >
+          <Icon name="save" />
           Save{tab.dirty && tab.itemId ? " •" : ""}
         </button>
         <button
           type="button"
-          className="save-btn"
+          className="icon-btn"
           title="Generate code snippet"
           onClick={() => setCodeOpen(true)}
         >
-          {"</>"}
+          <Icon name="code" />
         </button>
       </form>
 

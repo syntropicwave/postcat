@@ -5,6 +5,7 @@ import { runCollection, runnerCancel } from "../ipc/commands";
 import { useTabs } from "../state/tabs";
 import type { Collection, RequestRunResult, RunReport } from "../types";
 import { formatDuration } from "./ResponseViewer";
+import { Icon } from "./Icon";
 
 interface Props {
   collection: Collection;
@@ -182,7 +183,9 @@ export function RunnerDialog({ collection, onClose }: Props) {
             .flatMap((r) => r.tests.filter((t) => !t.passed))
             .map((t, i) => (
               <div key={`f${i}`} className="test-row fail">
-                <span className="test-mark">✗</span>
+                <span className="test-mark">
+                  <Icon name="x" size={13} />
+                </span>
                 <span className="test-name">{t.name}</span>
                 <span className="test-error">{t.error}</span>
               </div>

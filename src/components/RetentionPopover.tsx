@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { retentionGet, retentionSet } from "../ipc/commands";
+import { Icon } from "./Icon";
 
 /** History retention settings. Defaults keep everything forever. */
 export function RetentionPopover({ onClose }: { onClose: () => void }) {
@@ -48,7 +49,10 @@ export function RetentionPopover({ onClose }: { onClose: () => void }) {
         />
         entries (0 = unlimited)
       </label>
-      <div className="retention-note">★ Pinned entries are never deleted.</div>
+      <div className="retention-note">
+        <Icon name="star-filled" size={12} />
+        Pinned entries are never deleted.
+      </div>
       <div className="retention-actions">
         <button onClick={onClose}>Cancel</button>
         <button className="primary" onClick={() => void save()}>

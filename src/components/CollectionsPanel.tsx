@@ -20,6 +20,7 @@ import type { Collection, CollectionItem } from "../types";
 import { StoredAuthDialog } from "./StoredAuthDialog";
 import { ScriptsDialog } from "./ScriptsDialog";
 import { RunnerDialog } from "./RunnerDialog";
+import { Icon } from "./Icon";
 
 export function CollectionsPanel() {
   const collectionsVersion = useTabs((s) => s.collectionsVersion);
@@ -169,7 +170,9 @@ function CollectionNode({
   return (
     <div className="collection-node">
       <div className="collection-row" onClick={onToggle}>
-        <span className="tree-caret">{open ? "▾" : "▸"}</span>
+        <span className="tree-caret">
+          <Icon name={open ? "chevron-down" : "chevron-right"} size={13} />
+        </span>
         {renaming ? (
           <input
             autoFocus
@@ -197,7 +200,7 @@ function CollectionNode({
               onChanged();
             }}
           >
-            📁
+            <Icon name="folder-plus" />
           </button>
           <button
             title="Rename"
@@ -206,22 +209,22 @@ function CollectionNode({
               setRenaming(true);
             }}
           >
-            ✎
+            <Icon name="pencil" />
           </button>
           <button title="Run collection" onClick={() => setRunnerOpen(true)}>
-            ▶
+            <Icon name="play" />
           </button>
           <button title="Collection auth" onClick={() => setAuthOpen(true)}>
-            🔑
+            <Icon name="key" />
           </button>
           <button
             title="Collection scripts"
             onClick={() => setScriptsOpen(true)}
           >
-            📜
+            <Icon name="script" />
           </button>
           <button title="Export as Postman v2.1" onClick={onExport}>
-            ⇩
+            <Icon name="download" />
           </button>
           <button
             title="Delete collection"
@@ -240,7 +243,7 @@ function CollectionNode({
               }
             }}
           >
-            ×
+            <Icon name="trash" />
           </button>
         </span>
       </div>
@@ -396,7 +399,9 @@ function TreeNode({
         onClick={() => (isFolder ? setOpen(!open) : openRequest())}
       >
         {isFolder ? (
-          <span className="tree-caret">{open ? "▾" : "▸"}</span>
+          <span className="tree-caret">
+            <Icon name={open ? "chevron-down" : "chevron-right"} size={13} />
+          </span>
         ) : (
           <span
             className={`hist-method method-${item.req_spec?.method ?? "GET"}`}
@@ -436,16 +441,16 @@ function TreeNode({
                   onChanged();
                 }}
               >
-                📁
+                <Icon name="folder-plus" />
               </button>
               <button title="Folder auth" onClick={() => setAuthOpen(true)}>
-                🔑
+                <Icon name="key" />
               </button>
               <button
                 title="Folder scripts"
                 onClick={() => setScriptsOpen(true)}
               >
-                📜
+                <Icon name="script" />
               </button>
             </>
           )}
@@ -456,7 +461,7 @@ function TreeNode({
               setRenaming(true);
             }}
           >
-            ✎
+            <Icon name="pencil" />
           </button>
           <button
             title="Duplicate"
@@ -465,7 +470,7 @@ function TreeNode({
               onChanged();
             }}
           >
-            ⧉
+            <Icon name="copy" />
           </button>
           <button
             title="Delete"
@@ -485,7 +490,7 @@ function TreeNode({
               }
             }}
           >
-            ×
+            <Icon name="trash" />
           </button>
         </span>
       </div>

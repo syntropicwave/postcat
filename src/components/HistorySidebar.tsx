@@ -15,6 +15,7 @@ import { formatDuration } from "./ResponseViewer";
 import { specToCurl } from "../utils/curl";
 import { DiffView } from "./DiffView";
 import { RetentionPopover } from "./RetentionPopover";
+import { Icon } from "./Icon";
 
 const PAGE = 100;
 
@@ -126,14 +127,17 @@ export function HistorySidebar() {
           title="Filters"
           onClick={() => setFiltersOpen((v) => !v)}
         >
-          ⛛{activeFilterCount ? activeFilterCount : ""}
+          <Icon name="filter" />
+          {activeFilterCount ? (
+            <span className="icon-badge">{activeFilterCount}</span>
+          ) : null}
         </button>
         <button
           className={`icon-btn${settingsOpen ? " active" : ""}`}
           title="History settings"
           onClick={() => setSettingsOpen((v) => !v)}
         >
-          ⚙
+          <Icon name="settings" />
         </button>
       </div>
 
@@ -185,13 +189,13 @@ export function HistorySidebar() {
               value={ui.to}
               onChange={(e) => setUi({ ...ui, to: e.target.value })}
             />
-            <label className="filter-pinned">
+            <label className="filter-pinned" title="Pinned only">
               <input
                 type="checkbox"
                 checked={ui.pinnedOnly}
                 onChange={(e) => setUi({ ...ui, pinnedOnly: e.target.checked })}
               />
-              ★
+              <Icon name="star" size={14} />
             </label>
             {activeFilterCount > 0 && (
               <button
@@ -416,7 +420,7 @@ function HistoryItem({
               onPatch(e.id, { pinned: !e.pinned });
             }}
           >
-            {e.pinned ? "★" : "☆"}
+            <Icon name={e.pinned ? "star-filled" : "star"} />
           </button>
           <button
             title="Label"
@@ -425,16 +429,20 @@ function HistoryItem({
               setEditingLabel(true);
             }}
           >
-            ✎
+            <Icon name="pencil" />
           </button>
           <button
             className={diffPicked ? "pinned" : ""}
             title="Compare: pick two entries"
             onClick={() => onPickDiff(e.id)}
           >
-            ⇆
+            <Icon name="diff" />
           </button>
-          <button title="Copy as cURL" onClick={() => void copyCurl()}>
+          <button
+            className="hist-curl"
+            title="Copy as cURL"
+            onClick={() => void copyCurl()}
+          >
             curl
           </button>
           <button
@@ -444,7 +452,7 @@ function HistoryItem({
               onDelete(e.id);
             }}
           >
-            ×
+            <Icon name="trash" />
           </button>
         </div>
       )}

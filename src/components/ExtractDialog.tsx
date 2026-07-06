@@ -115,7 +115,7 @@ export function ExtractDialog({ bodyText, collectionId, onClose }: Props) {
               <option value="global">Global</option>
             </select>
             <button className="primary" onClick={() => void doSave()}>
-              {saved ? "Saved ✓" : "Save"}
+              {saved ? "Saved" : "Save"}
             </button>
           </div>
         )}

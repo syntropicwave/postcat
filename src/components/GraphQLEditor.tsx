@@ -86,7 +86,7 @@ export function GraphQLEditor({
             title="Fetch schema (introspection)"
             onClick={() => void fetchSchema()}
           >
-            {loading ? "Loading…" : schema ? "↻ Schema" : "Schema"}
+            {loading ? "Loading…" : schema ? "Refresh schema" : "Schema"}
           </button>
         </div>
         {pane === "query" ? (
