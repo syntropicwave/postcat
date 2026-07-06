@@ -1569,6 +1569,212 @@ textarea:focus-visible {
   flex: 1;
 }
 
+/* ---------- Host alias chips ---------- */
+
+.host-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-family: Inter, "Segoe UI", sans-serif;
+  font-size: 0.82em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.host-chip-default {
+  background: var(--accent);
+  color: #fff;
+}
+
+.url-scheme {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+/* Address bar: transparent underlay that tints the host under the caret. */
+.url-underlay {
+  position: absolute;
+  inset: 0;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  font-family: var(--mono);
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+  color: transparent;
+}
+
+.url-underlay .uh-host {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* Blurred address bar collapsed to chip form; click to edit. */
+.url-collapsed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  font-family: var(--mono);
+  cursor: text;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.url-collapsed .host-chip {
+  margin: 0 1px;
+}
+
+/* Alias save/edit popover under the host. */
+.alias-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 45;
+  width: 250px;
+  padding: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alias-popover-host {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+.alias-popover input.alias-name {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.alias-swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.alias-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.alias-swatch.active {
+  border-color: var(--text);
+}
+
+.alias-popover-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.alias-popover-actions .spacer {
+  flex: 1;
+}
+
+.alias-popover-actions button {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.alias-popover-actions .primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.alias-popover-actions .danger {
+  border: none;
+  color: var(--server-error);
+}
+
+/* ---------- Hosts manager ---------- */
+
+.hosts-empty {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 4px 0;
+}
+
+.host-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.host-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.host-row-host {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.host-row-edit,
+.host-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.host-row-edit .alias-name,
+.host-add .alias-name {
+  flex: 1;
+  min-width: 90px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.host-add .primary,
+.host-row-edit .primary {
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
 .var-suggest {
   position: absolute;
   top: calc(100% + 4px);

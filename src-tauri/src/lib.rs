@@ -3,6 +3,7 @@ pub mod collections;
 pub mod cookies;
 pub mod crypto;
 pub mod history;
+pub mod host_aliases;
 pub mod http_engine;
 pub mod importers;
 pub mod runner;
@@ -921,6 +922,30 @@ fn app_settings_set(
     settings::set(&store, &settings_value).map_err(|e| e.to_string())
 }
 
+/* ---------------- host aliases ---------------- */
+
+#[tauri::command]
+fn host_aliases_list(
+    store: tauri::State<'_, Store>,
+) -> Result<Vec<host_aliases::HostAlias>, String> {
+    host_aliases::list(&store).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn host_alias_upsert(
+    store: tauri::State<'_, Store>,
+    host: String,
+    alias: String,
+    color: String,
+) -> Result<host_aliases::HostAlias, String> {
+    host_aliases::upsert(&store, &host, &alias, &color).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn host_alias_delete(store: tauri::State<'_, Store>, id: i64) -> Result<(), String> {
+    host_aliases::delete(&store, id).map_err(|e| e.to_string())
+}
+
 fn db_path(app: &tauri::AppHandle) -> Result<PathBuf, tauri::Error> {
     Ok(app.path().app_data_dir()?.join("postcat.db"))
 }
@@ -997,6 +1022,9 @@ pub fn run() {
             cookies_clear,
             app_settings_get,
             app_settings_set,
+            host_aliases_list,
+            host_alias_upsert,
+            host_alias_delete,
             collection_scripts_get,
             collection_scripts_set,
             item_scripts_get,

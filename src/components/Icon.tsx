@@ -36,6 +36,7 @@ export type IconName =
   | "extract"
   | "wrap"
   | "save"
+  | "tag"
   | "refresh";
 
 const PATHS: Record<IconName, ReactElement> = {
@@ -134,6 +135,12 @@ const PATHS: Record<IconName, ReactElement> = {
     <>
       <path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
       <path d="M8 3v5h7M8 21v-6h8v6" />
+    </>
+  ),
+  tag: (
+    <>
+      <path d="M3 6a3 3 0 0 1 3-3h5.5a2 2 0 0 1 1.4.6l7 7a2 2 0 0 1 0 2.8l-5.5 5.5a2 2 0 0 1-2.8 0l-7-7A2 2 0 0 1 3 11.5V6Z" />
+      <circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none" />
     </>
   ),
 };

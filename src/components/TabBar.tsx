@@ -1,4 +1,5 @@
 import { useTabs } from "../state/tabs";
+import { UrlDisplay } from "./UrlDisplay";
 
 export function TabBar() {
   const { tabs, activeTabId, setActive, closeTab, newTab } = useTabs();
@@ -15,7 +16,11 @@ export function TabBar() {
             {tab.method}
           </span>
           <span className="tab-title">
-            {tab.itemName ?? tabTitle(tab.url)}
+            {tab.itemName ? (
+              tab.itemName
+            ) : (
+              <UrlDisplay url={tab.url} scheme="hide" />
+            )}
             {tab.dirty && tab.itemId ? " •" : ""}
           </span>
           <button
@@ -39,15 +44,4 @@ export function TabBar() {
       </button>
     </div>
   );
-}
-
-function tabTitle(url: string): string {
-  if (!url.trim()) return "New request";
-  try {
-    const u = new URL(url.includes("://") ? url : `http://${url}`);
-    const path = u.pathname === "/" ? "" : u.pathname;
-    return `${u.host}${path}` || url;
-  } catch {
-    return url;
-  }
 }

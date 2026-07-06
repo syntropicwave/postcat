@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AppSettings,
+  HostAlias,
   AuthSpec,
   Collection,
   CollectionItem,
@@ -342,6 +343,24 @@ export function appSettingsGet(): Promise<AppSettings> {
 
 export function appSettingsSet(settings: AppSettings): Promise<void> {
   return invoke("app_settings_set", { settingsValue: settings });
+}
+
+/* ---------------- host aliases ---------------- */
+
+export function hostAliasesList(): Promise<HostAlias[]> {
+  return invoke<HostAlias[]>("host_aliases_list");
+}
+
+export function hostAliasUpsert(
+  host: string,
+  alias: string,
+  color: string,
+): Promise<HostAlias> {
+  return invoke<HostAlias>("host_alias_upsert", { host, alias, color });
+}
+
+export function hostAliasDelete(id: number): Promise<void> {
+  return invoke("host_alias_delete", { id });
 }
 
 /* ---------------- sync ---------------- */

@@ -276,6 +276,13 @@ export interface AppSettings {
   wrap_response: boolean;
 }
 
+export interface HostAlias {
+  id: number;
+  host: string;
+  alias: string;
+  color: string;
+}
+
 export interface ImportResult {
   collection_id: number;
   name: string;

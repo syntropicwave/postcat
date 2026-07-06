@@ -8,6 +8,7 @@ import { ResponseViewer } from "./components/ResponseViewer";
 import { SaveDialog } from "./components/SaveDialog";
 import { CookieManager } from "./components/CookieManager";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { HostsDialog } from "./components/HostsDialog";
 import { SyncDialog } from "./components/SyncDialog";
 import { WsPanel } from "./components/WsPanel";
 import { CommandPalette } from "./components/CommandPalette";
@@ -16,6 +17,7 @@ import { Icon } from "./components/Icon";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { usePersistentState } from "./hooks/usePersistentState";
 import { useAppSettings } from "./state/appSettings";
+import { useHostAliases } from "./state/hostAliases";
 import { useTabs, isWsUrl } from "./state/tabs";
 import { listen } from "@tauri-apps/api/event";
 import { historySearch } from "./ipc/commands";
@@ -30,6 +32,7 @@ function App() {
   const [saveFor, setSaveFor] = useState<string | null>(null);
   const [cookiesOpen, setCookiesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hostsOpen, setHostsOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [diffPair, setDiffPair] = useState<[number, number] | null>(null);
@@ -37,6 +40,7 @@ function App() {
 
   const layout = useAppSettings((s) => s.settings?.response_layout ?? "bottom");
   const loadSettings = useAppSettings((s) => s.load);
+  const loadHostAliases = useHostAliases((s) => s.load);
   const horizontal = layout === "right";
 
   // Resizable panels (persisted). Double-click a divider to reset.
@@ -59,7 +63,8 @@ function App() {
 
   useEffect(() => {
     void loadSettings();
-  }, [loadSettings]);
+    void loadHostAliases();
+  }, [loadSettings, loadHostAliases]);
 
   // "Diff vs previous": find the prior response for this endpoint.
   const diffPrevious = active?.response
@@ -175,6 +180,13 @@ function App() {
             </button>
             <button
               className="icon-btn"
+              title="Host aliases"
+              onClick={() => setHostsOpen(true)}
+            >
+              <Icon name="tag" />
+            </button>
+            <button
+              className="icon-btn"
               title="Cookies"
               onClick={() => setCookiesOpen(true)}
             >
@@ -225,6 +237,7 @@ function App() {
       </main>
       {saveTab && <SaveDialog tab={saveTab} onClose={() => setSaveFor(null)} />}
       {cookiesOpen && <CookieManager onClose={() => setCookiesOpen(false)} />}
+      {hostsOpen && <HostsDialog onClose={() => setHostsOpen(false)} />}
       {settingsOpen && (
         <SettingsDialog onClose={() => setSettingsOpen(false)} />
       )}

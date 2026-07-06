@@ -16,6 +16,7 @@ import { specToCurl } from "../utils/curl";
 import { DiffView } from "./DiffView";
 import { RetentionPopover } from "./RetentionPopover";
 import { Icon } from "./Icon";
+import { UrlDisplay } from "./UrlDisplay";
 
 const PAGE = 100;
 
@@ -531,7 +532,7 @@ function EndpointList({ historyVersion }: { historyVersion: number }) {
               <span className={`hist-method method-${g.method}`}>
                 {g.method}
               </span>
-              <span className="hist-url">{stripOrigin(g.url_base)}</span>
+              <UrlDisplay url={g.url_base} scheme="hide" className="hist-url" />
               <span className="endpoint-count">{g.count}</span>
               <span
                 className={`hist-status ${endpointStatusClass(g)}`}
@@ -604,15 +605,6 @@ function shortUrl(e: HistorySummary): string {
     return u.pathname + u.search || "/";
   } catch {
     return e.url;
-  }
-}
-
-function stripOrigin(url: string): string {
-  try {
-    const u = new URL(url);
-    return u.host + (u.pathname === "/" ? "" : u.pathname);
-  } catch {
-    return url;
   }
 }
 
