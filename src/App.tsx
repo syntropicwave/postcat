@@ -1,28 +1,51 @@
-import { useEffect, useState } from "react";
-import { appInfo, type AppInfo } from "./ipc/commands";
+import { useEffect } from "react";
+import { HistorySidebar } from "./components/HistorySidebar";
+import { TabBar } from "./components/TabBar";
+import { RequestEditor } from "./components/RequestEditor";
+import { ResponseViewer } from "./components/ResponseViewer";
+import { useTabs } from "./state/tabs";
 import "./App.css";
 
 function App() {
-  const [info, setInfo] = useState<AppInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { tabs, activeTabId, send, newTab, closeTab } = useTabs();
+  const active = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
 
   useEffect(() => {
-    appInfo()
-      .then(setInfo)
-      .catch((e) => setError(String(e)));
-  }, []);
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      const { activeTabId: id } = useTabs.getState();
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void send(id);
+      } else if (e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        newTab();
+      } else if (e.key.toLowerCase() === "w") {
+        e.preventDefault();
+        closeTab(id);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [send, newTab, closeTab]);
 
   return (
-    <main className="container">
-      <h1>postcat</h1>
-      <p>Local-first API client. History that remembers everything.</p>
-      {info && (
-        <p className="app-info">
-          v{info.version} · schema v{info.schema_version} · {info.db_path}
-        </p>
-      )}
-      {error && <p className="app-error">Core error: {error}</p>}
-    </main>
+    <div className="app">
+      <HistorySidebar />
+      <main className="main">
+        <TabBar />
+        {active && (
+          <div className="workspace">
+            <RequestEditor tab={active} />
+            <ResponseViewer
+              response={active.response}
+              error={active.responseError}
+              sending={active.sending}
+            />
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
 

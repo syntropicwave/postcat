@@ -2,7 +2,10 @@ use rusqlite::Connection;
 
 /// Ordered, append-only list of migrations. Never edit a shipped migration —
 /// add a new one. Version N is `MIGRATIONS[N-1]`.
-const MIGRATIONS: &[&str] = &[include_str!("../../migrations/0001_init.sql")];
+const MIGRATIONS: &[&str] = &[
+    include_str!("../../migrations/0001_init.sql"),
+    include_str!("../../migrations/0002_history.sql"),
+];
 
 #[cfg(test)]
 pub const LATEST_VERSION: i64 = MIGRATIONS.len() as i64;

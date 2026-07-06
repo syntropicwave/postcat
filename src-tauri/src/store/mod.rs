@@ -28,7 +28,7 @@ impl Store {
         Self::from_connection(conn)
     }
 
-    #[cfg(test)]
+    /// Used by tests; also the future home of an ephemeral "incognito" mode.
     pub fn open_in_memory() -> Result<Self, StoreError> {
         Self::from_connection(Connection::open_in_memory()?)
     }
