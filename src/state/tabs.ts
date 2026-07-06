@@ -17,6 +17,7 @@ import type {
   WsMessage,
 } from "../types";
 import { DEFAULT_SETTINGS } from "../types";
+import { requestDefaults } from "./appSettings";
 
 export interface Tab {
   id: string;
@@ -85,7 +86,7 @@ function makeTab(partial?: Partial<Tab>): Tab {
     params: [],
     headers: [],
     body: { kind: "none" },
-    settings: { ...DEFAULT_SETTINGS },
+    settings: requestDefaults(DEFAULT_SETTINGS),
     auth: { kind: "none" },
     pathVars: {},
     preRequestScript: "",

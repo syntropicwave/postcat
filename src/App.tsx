@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HistorySidebar } from "./components/HistorySidebar";
 import { CollectionsPanel } from "./components/CollectionsPanel";
 import { TabBar } from "./components/TabBar";
@@ -13,6 +13,9 @@ import { WsPanel } from "./components/WsPanel";
 import { CommandPalette } from "./components/CommandPalette";
 import { DiffView } from "./components/DiffView";
 import { Icon } from "./components/Icon";
+import { ResizeHandle } from "./components/ResizeHandle";
+import { usePersistentState } from "./hooks/usePersistentState";
+import { useAppSettings } from "./state/appSettings";
 import { useTabs, isWsUrl } from "./state/tabs";
 import { listen } from "@tauri-apps/api/event";
 import { historySearch } from "./ipc/commands";
@@ -31,6 +34,32 @@ function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [diffPair, setDiffPair] = useState<[number, number] | null>(null);
   const active = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
+
+  const layout = useAppSettings((s) => s.settings?.response_layout ?? "bottom");
+  const loadSettings = useAppSettings((s) => s.load);
+  const horizontal = layout === "right";
+
+  // Resizable panels (persisted). Double-click a divider to reset.
+  const [sidebarWidth, setSidebarWidth] = usePersistentState(
+    "ui.sidebarWidth",
+    320,
+  );
+  const [reqHeight, setReqHeight] = usePersistentState<number | null>(
+    "ui.reqHeight",
+    null,
+  );
+  const [reqWidth, setReqWidth] = usePersistentState<number | null>(
+    "ui.reqWidth",
+    null,
+  );
+  const workspaceRef = useRef<HTMLDivElement>(null);
+
+  const clamp = (v: number, lo: number, hi: number) =>
+    Math.min(Math.max(v, lo), hi);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
 
   // "Diff vs previous": find the prior response for this endpoint.
   const diffPrevious = active?.response
@@ -87,11 +116,30 @@ function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [send, newTab, closeTab]);
 
+  const onSidebarDelta = (dx: number) =>
+    setSidebarWidth((w) => clamp(w + dx, 220, 640));
+
+  const onReqDelta = (delta: number) => {
+    const ws = workspaceRef.current;
+    if (!ws) return;
+    const reqEl = ws.querySelector<HTMLElement>(".request-editor");
+    const rect = reqEl?.getBoundingClientRect();
+    if (horizontal) {
+      const base = reqWidth ?? rect?.width ?? 480;
+      const maxW = ws.getBoundingClientRect().width - 360;
+      setReqWidth(clamp(base + delta, 320, Math.max(320, maxW)));
+    } else {
+      const base = reqHeight ?? rect?.height ?? 320;
+      const maxH = ws.getBoundingClientRect().height - 160;
+      setReqHeight(clamp(base + delta, 160, Math.max(160, maxH)));
+    }
+  };
+
   const saveTab = saveFor ? tabs.find((t) => t.id === saveFor) : undefined;
 
   return (
     <div className="app">
-      <div className="sidebar-wrap">
+      <div className="sidebar-wrap" style={{ width: sidebarWidth }}>
         <div className="sidebar-tabs">
           <button
             className={sidebarTab === "history" ? "active" : ""}
@@ -108,6 +156,11 @@ function App() {
         </div>
         {sidebarTab === "history" ? <HistorySidebar /> : <CollectionsPanel />}
       </div>
+      <ResizeHandle
+        axis="x"
+        onDelta={onSidebarDelta}
+        onReset={() => setSidebarWidth(320)}
+      />
       <main className="main">
         <div className="top-bar">
           <TabBar />
@@ -129,7 +182,7 @@ function App() {
             </button>
             <button
               className="icon-btn"
-              title="Settings (proxy, certificates)"
+              title="Settings"
               onClick={() => setSettingsOpen(true)}
             >
               <Icon name="settings" />
@@ -137,8 +190,24 @@ function App() {
           </div>
         </div>
         {active && (
-          <div className="workspace">
+          <div
+            className={`workspace ${horizontal ? "horizontal" : ""}`}
+            ref={workspaceRef}
+            style={
+              {
+                ...(reqHeight != null ? { "--req-h": `${reqHeight}px` } : {}),
+                ...(reqWidth != null ? { "--req-w": `${reqWidth}px` } : {}),
+              } as React.CSSProperties
+            }
+          >
             <RequestEditor tab={active} />
+            <ResizeHandle
+              axis={horizontal ? "x" : "y"}
+              onDelta={onReqDelta}
+              onReset={() =>
+                horizontal ? setReqWidth(null) : setReqHeight(null)
+              }
+            />
             {isWsUrl(active.url) ? (
               <WsPanel tab={active} />
             ) : (

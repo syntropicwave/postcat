@@ -20,6 +20,24 @@ pub struct AppSettings {
     pub max_captured_body_kb: u32,
     /// Default timeout for new requests, milliseconds.
     pub default_timeout_ms: u64,
+
+    // ----- Defaults applied to newly created requests -----
+    /// Verify TLS certificates by default.
+    pub default_verify_ssl: bool,
+    /// Follow HTTP redirects by default.
+    pub default_follow_redirects: bool,
+    /// Redirect hop limit for new requests.
+    pub default_max_redirects: u32,
+
+    // ----- Appearance / editor (UI only) -----
+    /// "system" | "light" | "dark"
+    pub theme: String,
+    /// Response pane placement: "bottom" | "right".
+    pub response_layout: String,
+    /// Editor/response font size in pixels.
+    pub editor_font_size: u32,
+    /// Wrap long response bodies by default.
+    pub wrap_response: bool,
 }
 
 impl Default for AppSettings {
@@ -32,6 +50,13 @@ impl Default for AppSettings {
             client_cert_password: String::new(),
             max_captured_body_kb: 5 * 1024,
             default_timeout_ms: 30_000,
+            default_verify_ssl: true,
+            default_follow_redirects: true,
+            default_max_redirects: 10,
+            theme: "system".into(),
+            response_layout: "bottom".into(),
+            editor_font_size: 13,
+            wrap_response: true,
         }
     }
 }

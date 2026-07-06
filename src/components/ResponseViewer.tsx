@@ -11,6 +11,7 @@ import { usePrefersDark } from "../hooks/usePrefersDark";
 import { ExtractDialog } from "./ExtractDialog";
 import { TimingBar } from "./TimingBar";
 import { Icon } from "./Icon";
+import { useAppSettings } from "../state/appSettings";
 
 type View = "pretty" | "raw" | "preview" | "headers" | "tests";
 
@@ -32,8 +33,9 @@ export function ResponseViewer({
   collectionId = null,
   onDiffPrevious,
 }: Props) {
+  const wrapDefault = useAppSettings((s) => s.settings?.wrap_response ?? true);
   const [view, setView] = useState<View>("pretty");
-  const [wrap, setWrap] = useState(true);
+  const [wrap, setWrap] = useState(wrapDefault);
   const [copied, setCopied] = useState(false);
   const [extractOpen, setExtractOpen] = useState(false);
 

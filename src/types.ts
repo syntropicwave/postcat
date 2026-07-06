@@ -267,6 +267,13 @@ export interface AppSettings {
   client_cert_password: string;
   max_captured_body_kb: number;
   default_timeout_ms: number;
+  default_verify_ssl: boolean;
+  default_follow_redirects: boolean;
+  default_max_redirects: number;
+  theme: "system" | "light" | "dark";
+  response_layout: "bottom" | "right";
+  editor_font_size: number;
+  wrap_response: boolean;
 }
 
 export interface ImportResult {

@@ -1,17 +1,24 @@
 import { useEffect, useState } from "react";
+import { useAppSettings } from "../state/appSettings";
 
-/** Tracks the OS dark-mode preference (the app follows it via color-scheme). */
+/**
+ * Whether the UI should render dark. Follows the OS unless the user forced a
+ * theme in Settings (system / light / dark). Drives CodeMirror themes.
+ */
 export function usePrefersDark(): boolean {
-  const [dark, setDark] = useState(
+  const theme = useAppSettings((s) => s.settings?.theme ?? "system");
+  const [osDark, setOsDark] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (e: MediaQueryListEvent) => setDark(e.matches);
+    const onChange = (e: MediaQueryListEvent) => setOsDark(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  return dark;
+  if (theme === "dark") return true;
+  if (theme === "light") return false;
+  return osDark;
 }
