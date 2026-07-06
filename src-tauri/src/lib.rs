@@ -116,19 +116,54 @@ fn cancel_request(inflight: tauri::State<'_, InflightRequests>, request_id: Stri
 }
 
 #[tauri::command]
-fn history_list(
+fn history_search(
     store: tauri::State<'_, Store>,
+    filters: history::SearchFilters,
     limit: Option<u32>,
     offset: Option<u32>,
-    query: Option<String>,
 ) -> Result<Vec<history::HistorySummary>, String> {
-    history::list(
+    history::search(
         &store,
+        &filters,
         limit.unwrap_or(100).min(500),
         offset.unwrap_or(0),
-        query.as_deref(),
     )
     .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn history_endpoints(
+    store: tauri::State<'_, Store>,
+    limit: Option<u32>,
+) -> Result<Vec<history::EndpointGroup>, String> {
+    history::endpoints(&store, limit.unwrap_or(200).min(1000)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn history_set_pinned(store: tauri::State<'_, Store>, id: i64, pinned: bool) -> Result<(), String> {
+    history::set_pinned(&store, id, pinned).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn history_set_label(
+    store: tauri::State<'_, Store>,
+    id: i64,
+    label: Option<String>,
+) -> Result<(), String> {
+    history::set_label(&store, id, label).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn retention_get(store: tauri::State<'_, Store>) -> Result<history::RetentionSettings, String> {
+    history::retention_get(&store).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn retention_set(
+    store: tauri::State<'_, Store>,
+    settings: history::RetentionSettings,
+) -> Result<(), String> {
+    history::retention_set(&store, settings).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -178,10 +213,15 @@ pub fn run() {
             app_info,
             send_request,
             cancel_request,
-            history_list,
+            history_search,
+            history_endpoints,
             history_get,
+            history_set_pinned,
+            history_set_label,
             history_delete,
-            history_clear
+            history_clear,
+            retention_get,
+            retention_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

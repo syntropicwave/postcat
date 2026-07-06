@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use postcat_lib::history;
+use postcat_lib::history::{self, SearchFilters};
 use postcat_lib::http_engine::{self, BodySpec, KeyValue, RequestSpec, SendSettings};
 use postcat_lib::store::Store;
 
@@ -66,7 +66,8 @@ async fn request_is_executed_and_recorded() {
     let store = Store::open_in_memory().unwrap();
     let id = history::record(&store, &spec, Ok(&resp)).unwrap();
 
-    let list = history::list(&store, 10, 0, None).unwrap();
+    let all = SearchFilters::default();
+    let list = history::search(&store, &all, 10, 0).unwrap();
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].id, id);
     assert_eq!(list[0].method, "POST");
@@ -78,13 +79,16 @@ async fn request_is_executed_and_recorded() {
     assert_eq!(detail.req_body_text.as_deref(), Some(r#"{"ping":true}"#));
     assert_eq!(detail.req_spec["method"], "POST");
 
-    // Search: URL substring and method name match, junk does not.
-    assert_eq!(history::list(&store, 10, 0, Some("echo")).unwrap().len(), 1);
-    assert_eq!(history::list(&store, 10, 0, Some("post")).unwrap().len(), 1);
-    assert_eq!(
-        history::list(&store, 10, 0, Some("nomatch")).unwrap().len(),
-        0
-    );
+    // Search: URL text matches, junk does not.
+    let by_text = |q: &str| {
+        let f = SearchFilters {
+            query: Some(q.into()),
+            ..Default::default()
+        };
+        history::search(&store, &f, 10, 0).unwrap().len()
+    };
+    assert_eq!(by_text("echo"), 1);
+    assert_eq!(by_text("nomatch"), 0);
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -1,8 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  EndpointGroup,
   HistoryDetail,
   HistorySummary,
   RequestSpec,
+  RetentionSettings,
+  SearchFilters,
   SendResult,
 } from "../types";
 
@@ -31,12 +34,34 @@ export function cancelRequest(requestId: string): Promise<void> {
   return invoke("cancel_request", { requestId });
 }
 
-export function historyList(options?: {
-  limit?: number;
-  offset?: number;
-  query?: string;
-}): Promise<HistorySummary[]> {
-  return invoke<HistorySummary[]>("history_list", { ...options });
+export function historySearch(
+  filters: SearchFilters,
+  options?: { limit?: number; offset?: number },
+): Promise<HistorySummary[]> {
+  return invoke<HistorySummary[]>("history_search", { filters, ...options });
+}
+
+export function historyEndpoints(limit?: number): Promise<EndpointGroup[]> {
+  return invoke<EndpointGroup[]>("history_endpoints", { limit });
+}
+
+export function historySetPinned(id: number, pinned: boolean): Promise<void> {
+  return invoke("history_set_pinned", { id, pinned });
+}
+
+export function historySetLabel(
+  id: number,
+  label: string | null,
+): Promise<void> {
+  return invoke("history_set_label", { id, label });
+}
+
+export function retentionGet(): Promise<RetentionSettings> {
+  return invoke<RetentionSettings>("retention_get");
+}
+
+export function retentionSet(settings: RetentionSettings): Promise<void> {
+  return invoke("retention_set", { settings });
 }
 
 export function historyGet(id: number): Promise<HistoryDetail> {

@@ -56,6 +56,37 @@ export interface HistorySummary {
   error: string | null;
   duration_ms: number | null;
   resp_size: number | null;
+  pinned: boolean;
+  label: string | null;
+  /** Match context with `[[`..`]]` around hits; only for text search. */
+  snippet: string | null;
+}
+
+export interface SearchFilters {
+  query?: string;
+  method?: string;
+  host?: string;
+  status_exact?: number;
+  status_class?: number;
+  errors_only?: boolean;
+  pinned_only?: boolean;
+  date_from?: string;
+  date_to?: string;
+  endpoint?: { method: string; url_base: string };
+}
+
+export interface EndpointGroup {
+  method: string;
+  url_base: string;
+  count: number;
+  last_sent_at: string;
+  last_status: number | null;
+  last_error: string | null;
+}
+
+export interface RetentionSettings {
+  max_age_days: number;
+  max_entries: number;
 }
 
 export interface HistoryDetail extends HistorySummary {

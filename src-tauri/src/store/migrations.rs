@@ -5,6 +5,7 @@ use rusqlite::Connection;
 const MIGRATIONS: &[&str] = &[
     include_str!("../../migrations/0001_init.sql"),
     include_str!("../../migrations/0002_history.sql"),
+    include_str!("../../migrations/0003_history_fts.sql"),
 ];
 
 #[cfg(test)]
