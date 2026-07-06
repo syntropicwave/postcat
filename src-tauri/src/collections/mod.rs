@@ -22,6 +22,8 @@ pub struct CollectionItem {
     pub description: String,
     pub sort_order: i64,
     pub req_spec: Option<serde_json::Value>,
+    pub pre_request_script: Option<String>,
+    pub test_script: Option<String>,
 }
 
 pub fn list(store: &Store) -> Result<Vec<Collection>, StoreError> {
@@ -87,7 +89,8 @@ pub fn delete(store: &Store, id: i64) -> Result<(), StoreError> {
 pub fn items(store: &Store, collection_id: i64) -> Result<Vec<CollectionItem>, StoreError> {
     store.with_conn(|conn| {
         let mut stmt = conn.prepare_cached(
-            "SELECT id, collection_id, parent_id, kind, name, description, sort_order, req_spec
+            "SELECT id, collection_id, parent_id, kind, name, description, sort_order, req_spec,
+                    pre_request_script, test_script
              FROM collection_items WHERE collection_id = ?1
              ORDER BY parent_id NULLS FIRST, sort_order, id",
         )?;
@@ -102,6 +105,8 @@ pub fn items(store: &Store, collection_id: i64) -> Result<Vec<CollectionItem>, S
                 description: row.get(5)?,
                 sort_order: row.get(6)?,
                 req_spec: spec.and_then(|s| serde_json::from_str(&s).ok()),
+                pre_request_script: row.get(8)?,
+                test_script: row.get(9)?,
             })
         })?;
         rows.collect()

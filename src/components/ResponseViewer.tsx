@@ -6,7 +6,7 @@ import { xml } from "@codemirror/lang-xml";
 import type { SendResult } from "../types";
 import { usePrefersDark } from "../hooks/usePrefersDark";
 
-type View = "pretty" | "raw" | "preview" | "headers";
+type View = "pretty" | "raw" | "preview" | "headers" | "tests";
 
 interface Props {
   response: SendResult | null;
@@ -60,6 +60,21 @@ export function ResponseViewer({ response, error, sending }: Props) {
               {v}
             </button>
           ))}
+          {(response.tests.length > 0 ||
+            response.console.length > 0 ||
+            response.script_error) && (
+            <button
+              className={`${view === "tests" ? "active" : ""} ${
+                response.tests.some((t) => !t.passed) || response.script_error
+                  ? "tests-failed"
+                  : "tests-passed"
+              }`}
+              onClick={() => setView("tests")}
+            >
+              tests ({response.tests.filter((t) => t.passed).length}/
+              {response.tests.length})
+            </button>
+          )}
         </span>
       </div>
       <ResponseBody response={response} view={view} />
@@ -90,6 +105,33 @@ function ResponseBody({
     }
     return text;
   }, [response.body_text, view, contentType]);
+
+  if (view === "tests") {
+    return (
+      <div className="tests-panel">
+        {response.script_error && (
+          <div className="app-error">Script error: {response.script_error}</div>
+        )}
+        {response.tests.map((t, i) => (
+          <div key={i} className={`test-row ${t.passed ? "pass" : "fail"}`}>
+            <span className="test-mark">{t.passed ? "✓" : "✗"}</span>
+            <span className="test-name">{t.name}</span>
+            {t.error && <span className="test-error">{t.error}</span>}
+          </div>
+        ))}
+        {response.console.length > 0 && (
+          <>
+            <div className="console-title">Console</div>
+            {response.console.map((c, i) => (
+              <div key={i} className={`console-line console-${c.level}`}>
+                {c.message}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    );
+  }
 
   if (view === "headers") {
     return (

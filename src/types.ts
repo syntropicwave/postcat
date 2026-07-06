@@ -33,6 +33,17 @@ export interface RequestSpec {
   auth?: AuthSpec;
 }
 
+export interface TestResult {
+  name: string;
+  passed: boolean;
+  error: string | null;
+}
+
+export interface ConsoleLine {
+  level: string;
+  message: string;
+}
+
 export interface SendResult {
   history_id: number;
   status: number;
@@ -45,6 +56,41 @@ export interface SendResult {
   size: number;
   duration_ms: number;
   ttfb_ms: number;
+  tests: TestResult[];
+  console: ConsoleLine[];
+  script_error: string | null;
+}
+
+export interface RunOptions {
+  collection_id: number;
+  folder_id?: number | null;
+  iterations: number;
+  delay_ms: number;
+  data?: unknown[] | null;
+}
+
+export interface RequestRunResult {
+  iteration: number;
+  item_id: number;
+  name: string;
+  url: string;
+  method: string;
+  status: number | null;
+  error: string | null;
+  duration_ms: number;
+  tests: TestResult[];
+  console: ConsoleLine[];
+  skipped: boolean;
+}
+
+export interface RunReport {
+  total_requests: number;
+  passed_tests: number;
+  failed_tests: number;
+  errors: number;
+  cancelled: boolean;
+  duration_ms: number;
+  results: RequestRunResult[];
 }
 
 export interface HistorySummary {
@@ -106,6 +152,8 @@ export interface CollectionItem {
   description: string;
   sort_order: number;
   req_spec: RequestSpec | null;
+  pre_request_script: string | null;
+  test_script: string | null;
 }
 
 export interface Environment {

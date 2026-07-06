@@ -4,6 +4,8 @@ pub mod cookies;
 pub mod history;
 pub mod http_engine;
 pub mod importers;
+pub mod runner;
+pub mod scripting;
 pub mod settings;
 pub mod store;
 pub mod vars;
@@ -43,7 +45,14 @@ struct SendResult {
     size: usize,
     duration_ms: f64,
     ttfb_ms: f64,
+    tests: Vec<scripting::TestResult>,
+    console: Vec<scripting::ConsoleLine>,
+    script_error: Option<String>,
 }
+
+/// Cancellation flags for collection runs, keyed by collection id.
+#[derive(Default)]
+struct RunnerCancels(Mutex<HashMap<i64, std::sync::Arc<std::sync::atomic::AtomicBool>>>);
 
 #[tauri::command]
 fn app_info(app: tauri::AppHandle, store: tauri::State<'_, Store>) -> Result<AppInfo, String> {
@@ -59,6 +68,7 @@ fn app_info(app: tauri::AppHandle, store: tauri::State<'_, Store>) -> Result<App
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 async fn send_request(
     store: tauri::State<'_, Store>,
     jar: tauri::State<'_, cookies::Cookies>,
@@ -67,9 +77,71 @@ async fn send_request(
     spec: RequestSpec,
     collection_id: Option<i64>,
     item_id: Option<i64>,
+    pre_request_script: Option<String>,
+    test_script: Option<String>,
 ) -> Result<SendResult, String> {
-    // Resolve {{vars}} now; the unresolved spec is what history replays.
-    let resolution = vars::resolve(&store, &spec, collection_id).map_err(|e| e.to_string())?;
+    let app_settings = settings::get(&store).map_err(|e| e.to_string())?;
+
+    // Script chains: collection -> folders (from the tree) + the tab's own.
+    let (mut pre_chain, mut test_chain) =
+        scripting::chain_scripts(&store, collection_id, item_id).map_err(|e| e.to_string())?;
+    if let Some(p) = pre_request_script.filter(|s| !s.trim().is_empty()) {
+        pre_chain.push(p);
+    }
+    if let Some(t) = test_script.filter(|s| !s.trim().is_empty()) {
+        test_chain.push(t);
+    }
+
+    let mut var_list =
+        collections::effective_vars(&store, collection_id).map_err(|e| e.to_string())?;
+    let mut vars_map: HashMap<String, String> = var_list
+        .iter()
+        .filter(|v| v.enabled)
+        .map(|v| (v.key.clone(), v.effective_value().to_owned()))
+        .collect();
+
+    let mut tests: Vec<scripting::TestResult> = Vec::new();
+    let mut console: Vec<scripting::ConsoleLine> = Vec::new();
+    let mut script_error: Option<String> = None;
+
+    // Pre-request scripts mutate the unresolved spec and the vars map.
+    let mut working_spec = spec.clone();
+    if !pre_chain.is_empty() {
+        let send_fn = scripting::blocking_send(app_settings.clone());
+        for script in &pre_chain {
+            let input = scripting::ScriptInput {
+                request: working_spec.clone(),
+                response: None,
+                vars: vars_map.clone(),
+                data: None,
+                iteration: 0,
+                iteration_count: 1,
+                request_name: String::new(),
+            };
+            let script = script.clone();
+            let send = send_fn.clone();
+            let out =
+                tokio::task::spawn_blocking(move || scripting::execute(&script, &input, send))
+                    .await
+                    .unwrap_or_default();
+            console.extend(out.console);
+            tests.extend(out.tests);
+            if let Some(req) = out.request {
+                working_spec = req;
+            }
+            let _ = scripting::apply_var_ops(&store, collection_id, &out.var_ops, &mut vars_map);
+            if let Some(e) = out.error {
+                script_error = Some(format!("pre-request: {e}"));
+                break;
+            }
+        }
+        for (k, v) in &vars_map {
+            vars::upsert_var(&mut var_list, k, v);
+        }
+    }
+
+    // Resolve {{vars}}; the ORIGINAL spec is what history replays.
+    let resolution = vars::resolve_with(&working_spec, &var_list);
     let mut secrets = resolution.secrets;
     let mut resolved = resolution.spec;
 
@@ -92,7 +164,6 @@ async fn send_request(
     secrets.extend(auth::apply(&mut resolved, &effective));
 
     let display = vars::mask_secrets(&resolved, &secrets);
-    let app_settings = settings::get(&store).map_err(|e| e.to_string())?;
 
     let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
     if let Ok(mut map) = inflight.0.lock() {
@@ -124,6 +195,50 @@ async fn send_request(
             let history_id = history::record(&store, &spec, &display, &secrets, Ok(&resp))
                 .map_err(|e| e.to_string())?;
             let (body_text, body_base64) = history::body_for_ui(&resp.body);
+
+            // Test scripts run against the response.
+            if !test_chain.is_empty() && script_error.is_none() {
+                let response_json = serde_json::json!({
+                    "status": resp.status,
+                    "status_text": resp.status_text,
+                    "headers": resp.headers,
+                    "body_text": body_text,
+                    "duration_ms": resp.duration_ms,
+                    "size": resp.size,
+                });
+                let send_fn = scripting::blocking_send(app_settings.clone());
+                for script in &test_chain {
+                    let input = scripting::ScriptInput {
+                        request: working_spec.clone(),
+                        response: Some(response_json.clone()),
+                        vars: vars_map.clone(),
+                        data: None,
+                        iteration: 0,
+                        iteration_count: 1,
+                        request_name: String::new(),
+                    };
+                    let script = script.clone();
+                    let send = send_fn.clone();
+                    let out = tokio::task::spawn_blocking(move || {
+                        scripting::execute(&script, &input, send)
+                    })
+                    .await
+                    .unwrap_or_default();
+                    console.extend(out.console);
+                    tests.extend(out.tests);
+                    let _ = scripting::apply_var_ops(
+                        &store,
+                        collection_id,
+                        &out.var_ops,
+                        &mut vars_map,
+                    );
+                    if let Some(e) = out.error {
+                        script_error = Some(format!("tests: {e}"));
+                        break;
+                    }
+                }
+            }
+
             Ok(SendResult {
                 history_id,
                 status: resp.status,
@@ -136,6 +251,9 @@ async fn send_request(
                 size: resp.size,
                 duration_ms: resp.duration_ms,
                 ttfb_ms: resp.ttfb_ms,
+                tests,
+                console,
+                script_error,
             })
         }
     }
@@ -444,6 +562,118 @@ async fn oauth2_authorize(
     .await
 }
 
+/* ---------------- scripts & runner ---------------- */
+
+#[tauri::command]
+fn collection_scripts_get(
+    store: tauri::State<'_, Store>,
+    id: i64,
+) -> Result<(Option<String>, Option<String>), String> {
+    store
+        .with_conn(|conn| {
+            conn.query_row(
+                "SELECT pre_request_script, test_script FROM collections WHERE id = ?1",
+                rusqlite::params![id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn collection_scripts_set(
+    store: tauri::State<'_, Store>,
+    id: i64,
+    pre_request_script: Option<String>,
+    test_script: Option<String>,
+) -> Result<(), String> {
+    store
+        .with_conn(|conn| {
+            conn.execute(
+                "UPDATE collections SET pre_request_script = ?2, test_script = ?3 WHERE id = ?1",
+                rusqlite::params![id, pre_request_script, test_script],
+            )?;
+            Ok(())
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn item_scripts_get(
+    store: tauri::State<'_, Store>,
+    id: i64,
+) -> Result<(Option<String>, Option<String>), String> {
+    store
+        .with_conn(|conn| {
+            conn.query_row(
+                "SELECT pre_request_script, test_script FROM collection_items WHERE id = ?1",
+                rusqlite::params![id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn item_scripts_set(
+    store: tauri::State<'_, Store>,
+    id: i64,
+    pre_request_script: Option<String>,
+    test_script: Option<String>,
+) -> Result<(), String> {
+    store
+        .with_conn(|conn| {
+            conn.execute(
+                "UPDATE collection_items SET pre_request_script = ?2, test_script = ?3 WHERE id = ?1",
+                rusqlite::params![id, pre_request_script, test_script],
+            )?;
+            Ok(())
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn run_collection(
+    app: tauri::AppHandle,
+    store: tauri::State<'_, Store>,
+    jar: tauri::State<'_, cookies::Cookies>,
+    cancels: tauri::State<'_, RunnerCancels>,
+    options: runner::RunOptions,
+) -> Result<runner::RunReport, String> {
+    use tauri::Emitter;
+    let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    if let Ok(mut map) = cancels.0.lock() {
+        map.insert(options.collection_id, cancel.clone());
+    }
+    let collection_id = options.collection_id;
+
+    let report = runner::run(&store, jar.store.clone(), options, cancel, |result| {
+        let _ = app.emit("runner:progress", result);
+    })
+    .await;
+
+    if let Ok(mut map) = cancels.0.lock() {
+        map.remove(&collection_id);
+    }
+    jar.save();
+    Ok(report)
+}
+
+/// Read a small text file (data files for the runner, etc.).
+#[tauri::command]
+fn read_text_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn runner_cancel(cancels: tauri::State<'_, RunnerCancels>, collection_id: i64) {
+    if let Ok(map) = cancels.0.lock() {
+        if let Some(flag) = map.get(&collection_id) {
+            flag.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+    }
+}
+
 /* ---------------- cookies ---------------- */
 
 #[tauri::command]
@@ -508,6 +738,7 @@ pub fn run() {
             let cookie_path = app.path().app_data_dir()?.join("cookies.json");
             app.manage(cookies::Cookies::load(&cookie_path));
             app.manage(InflightRequests::default());
+            app.manage(RunnerCancels::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -553,7 +784,14 @@ pub fn run() {
             cookie_delete,
             cookies_clear,
             app_settings_get,
-            app_settings_set
+            app_settings_set,
+            collection_scripts_get,
+            collection_scripts_set,
+            item_scripts_get,
+            item_scripts_set,
+            run_collection,
+            runner_cancel,
+            read_text_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

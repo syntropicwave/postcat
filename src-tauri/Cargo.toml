@@ -3,6 +3,7 @@ name = "postcat"
 version = "0.1.0"
 description = "Local-first API client with full-text searchable request history"
 edition = "2021"
+default-run = "postcat"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,6 +13,11 @@ edition = "2021"
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "postcat_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+# Headless collection runner (Newman analog).
+[[bin]]
+name = "postcat-cli"
+path = "src/bin/postcat_cli.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -25,7 +31,8 @@ rusqlite = { version = "0.34", features = ["bundled"] }
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-reqwest = { version = "0.12", features = ["cookies", "gzip", "brotli", "deflate", "multipart", "stream", "json", "native-tls"] }
+reqwest = { version = "0.12", features = ["cookies", "gzip", "brotli", "deflate", "multipart", "stream", "json", "native-tls", "blocking"] }
+rquickjs = "0.6"
 tokio = { version = "1", features = ["sync", "time", "macros", "rt-multi-thread"] }
 futures-util = "0.3"
 url = "2"

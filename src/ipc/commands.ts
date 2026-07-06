@@ -13,6 +13,8 @@ import type {
   OAuth2Config,
   RequestSpec,
   RetentionSettings,
+  RunOptions,
+  RunReport,
   SearchFilters,
   SendResult,
   TokenResult,
@@ -39,12 +41,16 @@ export function sendRequest(
   spec: RequestSpec,
   collectionId?: number | null,
   itemId?: number | null,
+  preRequestScript?: string | null,
+  testScript?: string | null,
 ): Promise<SendResult> {
   return invoke<SendResult>("send_request", {
     requestId,
     spec,
     collectionId,
     itemId,
+    preRequestScript,
+    testScript,
   });
 }
 
@@ -246,6 +252,44 @@ export function cookieDelete(
 
 export function cookiesClear(): Promise<void> {
   return invoke("cookies_clear");
+}
+
+/* ---------------- scripts & runner ---------------- */
+
+export function itemScriptsGet(
+  id: number,
+): Promise<[string | null, string | null]> {
+  return invoke("item_scripts_get", { id });
+}
+
+export function itemScriptsSet(
+  id: number,
+  preRequestScript: string | null,
+  testScript: string | null,
+): Promise<void> {
+  return invoke("item_scripts_set", { id, preRequestScript, testScript });
+}
+
+export function collectionScriptsGet(
+  id: number,
+): Promise<[string | null, string | null]> {
+  return invoke("collection_scripts_get", { id });
+}
+
+export function collectionScriptsSet(
+  id: number,
+  preRequestScript: string | null,
+  testScript: string | null,
+): Promise<void> {
+  return invoke("collection_scripts_set", { id, preRequestScript, testScript });
+}
+
+export function runCollection(options: RunOptions): Promise<RunReport> {
+  return invoke<RunReport>("run_collection", { options });
+}
+
+export function runnerCancel(collectionId: number): Promise<void> {
+  return invoke("runner_cancel", { collectionId });
 }
 
 export function appSettingsGet(): Promise<AppSettings> {

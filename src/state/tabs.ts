@@ -21,6 +21,8 @@ export interface Tab {
   body: BodySpec;
   settings: SendSettings;
   auth: AuthSpec;
+  preRequestScript: string;
+  testScript: string;
   sending: boolean;
   response: SendResult | null;
   responseError: string | null;
@@ -63,6 +65,8 @@ function makeTab(partial?: Partial<Tab>): Tab {
     body: { kind: "none" },
     settings: { ...DEFAULT_SETTINGS },
     auth: { kind: "none" },
+    preRequestScript: "",
+    testScript: "",
     sending: false,
     response: null,
     responseError: null,
@@ -207,6 +211,8 @@ export const useTabs = create<TabsState>((set, get) => ({
         specFromTab(tab),
         tab.collectionId,
         tab.itemId,
+        tab.preRequestScript || null,
+        tab.testScript || null,
       );
       get().updateTab(id, { sending: false, response: result });
     } catch (e) {

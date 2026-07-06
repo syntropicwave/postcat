@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { Tab } from "../state/tabs";
 import { useTabs, parseParams, specFromTab } from "../state/tabs";
-import { itemUpdate } from "../ipc/commands";
+import { itemScriptsSet, itemUpdate } from "../ipc/commands";
+import { ScriptsEditor } from "./ScriptsEditor";
 import { HTTP_METHODS } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { BodyEditor } from "./BodyEditor";
@@ -14,6 +15,11 @@ import { CodeDialog } from "./CodeDialog";
 export async function saveBoundTab(tab: Tab): Promise<boolean> {
   if (!tab.itemId) return false;
   await itemUpdate(tab.itemId, { spec: specFromTab(tab) });
+  await itemScriptsSet(
+    tab.itemId,
+    tab.preRequestScript || null,
+    tab.testScript || null,
+  );
   useTabs.getState().updateTab(tab.id, { dirty: false });
   useTabs.getState().bumpCollections();
   return true;
@@ -36,7 +42,7 @@ const COMMON_HEADERS = [
   "X-Request-Id",
 ];
 
-type Section = "params" | "auth" | "headers" | "body";
+type Section = "params" | "auth" | "headers" | "body" | "scripts";
 
 export function RequestEditor({ tab }: { tab: Tab }) {
   const { updateTab, setUrl, setParams, send, cancel } = useTabs();
@@ -150,6 +156,12 @@ export function RequestEditor({ tab }: { tab: Tab }) {
         >
           Body{tab.body.kind !== "none" ? " •" : ""}
         </button>
+        <button
+          className={section === "scripts" ? "active" : ""}
+          onClick={() => setSection("scripts")}
+        >
+          Scripts{tab.preRequestScript || tab.testScript ? " •" : ""}
+        </button>
       </div>
 
       <div className="section-content">
@@ -182,6 +194,19 @@ export function RequestEditor({ tab }: { tab: Tab }) {
           <BodyEditor
             body={tab.body}
             onChange={(body) => updateTab(tab.id, { body, dirty: true })}
+          />
+        )}
+        {section === "scripts" && (
+          <ScriptsEditor
+            preRequestScript={tab.preRequestScript}
+            testScript={tab.testScript}
+            onChange={(pre, test) =>
+              updateTab(tab.id, {
+                preRequestScript: pre,
+                testScript: test,
+                dirty: true,
+              })
+            }
           />
         )}
       </div>

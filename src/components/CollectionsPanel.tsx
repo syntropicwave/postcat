@@ -17,6 +17,8 @@ import {
 import { useTabs, parseParams } from "../state/tabs";
 import type { Collection, CollectionItem } from "../types";
 import { StoredAuthDialog } from "./StoredAuthDialog";
+import { ScriptsDialog } from "./ScriptsDialog";
+import { RunnerDialog } from "./RunnerDialog";
 
 export function CollectionsPanel() {
   const collectionsVersion = useTabs((s) => s.collectionsVersion);
@@ -152,6 +154,8 @@ function CollectionNode({
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(c.name);
   const [authOpen, setAuthOpen] = useState(false);
+  const [scriptsOpen, setScriptsOpen] = useState(false);
+  const [runnerOpen, setRunnerOpen] = useState(false);
 
   const rename = async () => {
     if (draft.trim() && draft !== c.name) {
@@ -203,8 +207,17 @@ function CollectionNode({
           >
             ✎
           </button>
+          <button title="Run collection" onClick={() => setRunnerOpen(true)}>
+            ▶
+          </button>
           <button title="Collection auth" onClick={() => setAuthOpen(true)}>
             🔑
+          </button>
+          <button
+            title="Collection scripts"
+            onClick={() => setScriptsOpen(true)}
+          >
+            📜
           </button>
           <button title="Export as Postman v2.1" onClick={onExport}>
             ⇩
@@ -237,6 +250,16 @@ function CollectionNode({
           allowInherit={false}
           onClose={() => setAuthOpen(false)}
         />
+      )}
+      {scriptsOpen && (
+        <ScriptsDialog
+          title={`Scripts — ${c.name}`}
+          target={{ collectionId: c.id }}
+          onClose={() => setScriptsOpen(false)}
+        />
+      )}
+      {runnerOpen && (
+        <RunnerDialog collection={c} onClose={() => setRunnerOpen(false)} />
       )}
       {open && (
         <Tree
@@ -303,6 +326,7 @@ function TreeNode({
   const [draft, setDraft] = useState(item.name);
   const [dragOver, setDragOver] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [scriptsOpen, setScriptsOpen] = useState(false);
 
   const openRequest = () => {
     const spec = item.req_spec;
@@ -315,6 +339,8 @@ function TreeNode({
       body: spec.body ?? { kind: "none" },
       settings: spec.settings,
       auth: spec.auth ?? { kind: "none" },
+      preRequestScript: item.pre_request_script ?? "",
+      testScript: item.test_script ?? "",
       collectionId,
       itemId: item.id,
       itemName: item.name,
@@ -413,6 +439,12 @@ function TreeNode({
               <button title="Folder auth" onClick={() => setAuthOpen(true)}>
                 🔑
               </button>
+              <button
+                title="Folder scripts"
+                onClick={() => setScriptsOpen(true)}
+              >
+                📜
+              </button>
             </>
           )}
           <button
@@ -452,6 +484,13 @@ function TreeNode({
           target={{ itemId: item.id }}
           allowInherit={true}
           onClose={() => setAuthOpen(false)}
+        />
+      )}
+      {scriptsOpen && (
+        <ScriptsDialog
+          title={`Scripts — ${item.name}`}
+          target={{ itemId: item.id }}
+          onClose={() => setScriptsOpen(false)}
         />
       )}
       {isFolder && open && (

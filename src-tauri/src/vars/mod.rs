@@ -200,6 +200,22 @@ pub fn mask_str(input: &str, secrets: &[(String, String)]) -> String {
     out
 }
 
+/// Add or override a variable in a scope list (strongest-wins semantics).
+pub fn upsert_var(vars: &mut Vec<Variable>, key: &str, value: &str) {
+    if let Some(existing) = vars.iter_mut().find(|v| v.key == key) {
+        existing.current_value = Some(value.to_owned());
+        existing.enabled = true;
+    } else {
+        vars.push(Variable {
+            key: key.to_owned(),
+            initial_value: value.to_owned(),
+            current_value: None,
+            is_secret: false,
+            enabled: true,
+        });
+    }
+}
+
 pub fn iso8601_from_unix(secs: i64) -> String {
     // Days-to-civil conversion (Howard Hinnant's algorithm), UTC.
     let days = secs.div_euclid(86_400);
