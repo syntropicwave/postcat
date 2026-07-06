@@ -52,37 +52,43 @@ export function useAliasForHost(host: string | null): HostAlias | undefined {
 }
 
 /**
- * The host (hostname + port) of a URL, or null if it has none yet. Tolerates
- * scheme-less input ("api.example.com/x") the way the address bar accepts it.
+ * The origin of a URL — scheme + host (+ port) — or null if it has none yet.
+ * Aliases are keyed on the origin so "https://x" and "http://x" are distinct.
+ * Scheme-less input ("api.example.com/x"), which the address bar accepts, is
+ * keyed on the bare host.
  */
-export function hostOf(url: string): string | null {
+export function originOf(url: string): string | null {
   const s = url.trim();
   if (!s) return null;
   try {
-    const u = new URL(s.includes("://") ? s : `http://${s}`);
-    return u.host || null;
+    if (s.includes("://")) {
+      const u = new URL(s);
+      return u.host ? `${u.protocol}//${u.host}`.toLowerCase() : null;
+    }
+    const u = new URL(`http://${s}`);
+    return u.host ? u.host.toLowerCase() : null;
   } catch {
     return null;
   }
 }
 
 /**
- * Split a URL into the parts around its host so callers can render the host
- * distinctly. `host` is null when the URL has no recognisable host yet.
+ * Split a URL into the parts around its origin so callers can render the
+ * origin distinctly. `host` (the origin) is null when the URL has none yet.
  */
 export function splitUrl(url: string): {
   pre: string;
   host: string | null;
   post: string;
 } {
-  const host = hostOf(url);
-  if (!host) return { pre: url, host: null, post: "" };
-  const i = url.toLowerCase().indexOf(host.toLowerCase());
+  const origin = originOf(url);
+  if (!origin) return { pre: url, host: null, post: "" };
+  const i = url.toLowerCase().indexOf(origin.toLowerCase());
   if (i < 0) return { pre: url, host: null, post: "" };
   return {
     pre: url.slice(0, i),
-    host: url.slice(i, i + host.length),
-    post: url.slice(i + host.length),
+    host: url.slice(i, i + origin.length),
+    post: url.slice(i + origin.length),
   };
 }
 
@@ -98,14 +104,18 @@ export function contrastText(hex: string): string {
   return lum > 0.6 ? "#1b1b1f" : "#ffffff";
 }
 
-/** Preset palette offered when creating/editing an alias. */
+/**
+ * Preset palette offered when creating/editing an alias. Muted pastels —
+ * calm but still distinguishable, and light enough to carry dark text on
+ * either theme.
+ */
 export const ALIAS_COLORS = [
-  "#7c5cff",
-  "#1a9a55",
-  "#d97706",
-  "#d13438",
-  "#0ea5e9",
-  "#db2777",
-  "#0d9488",
-  "#6b7280",
+  "#b3a3e0", // violet
+  "#8fc9a4", // green
+  "#e8c07f", // amber
+  "#e79a8f", // coral
+  "#87b8e2", // blue
+  "#e0a0cb", // pink
+  "#83ccc1", // teal
+  "#aeb8c7", // slate
 ];
