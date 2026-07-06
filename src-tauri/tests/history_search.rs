@@ -41,16 +41,25 @@ fn q(text: &str) -> SearchFilters {
     }
 }
 
+/// record() without variables: original == display, no secrets.
+fn rec(
+    store: &Store,
+    spec: &RequestSpec,
+    outcome: Result<&HttpResponseData, &str>,
+) -> Result<i64, postcat_lib::store::StoreError> {
+    history::record(store, spec, spec, &[], outcome)
+}
+
 #[test]
 fn finds_by_response_body_content() {
     let store = Store::open_in_memory().unwrap();
-    history::record(
+    rec(
         &store,
         &spec("GET", "https://api.shop.dev/orders/42", None),
         Ok(&response(200, r#"{"order_id":"ord_9f31","total":99}"#)),
     )
     .unwrap();
-    history::record(
+    rec(
         &store,
         &spec("GET", "https://api.shop.dev/users", None),
         Ok(&response(200, r#"{"users":[]}"#)),
@@ -64,7 +73,7 @@ fn finds_by_response_body_content() {
     assert!(hits[0].snippet.as_deref().unwrap_or("").contains("[["));
 
     // And by request body content.
-    history::record(
+    rec(
         &store,
         &spec(
             "POST",
@@ -82,7 +91,7 @@ fn finds_by_response_body_content() {
 #[test]
 fn url_substring_via_trigram() {
     let store = Store::open_in_memory().unwrap();
-    history::record(
+    rec(
         &store,
         &spec("GET", "https://internal.example.com/v2/warehouse", None),
         Ok(&response(200, "{}")),
@@ -102,7 +111,7 @@ fn filters_combine_with_text_query() {
         ("POST", "https://a.dev/items", 500),
         ("GET", "https://b.dev/items", 404),
     ] {
-        history::record(
+        rec(
             &store,
             &spec(method, url, None),
             Ok(&response(status, r#"{"items":[]}"#)),
@@ -136,14 +145,14 @@ fn filters_combine_with_text_query() {
 fn endpoint_grouping_and_drilldown() {
     let store = Store::open_in_memory().unwrap();
     for i in 0..3 {
-        history::record(
+        rec(
             &store,
             &spec("GET", &format!("https://a.dev/items?page={i}"), None),
             Ok(&response(200, "{}")),
         )
         .unwrap();
     }
-    history::record(
+    rec(
         &store,
         &spec("DELETE", "https://a.dev/items/1", None),
         Ok(&response(204, "")),
@@ -171,14 +180,14 @@ fn endpoint_grouping_and_drilldown() {
 #[test]
 fn label_is_searchable_and_pin_survives_everything() {
     let store = Store::open_in_memory().unwrap();
-    let id = history::record(
+    let id = rec(
         &store,
         &spec("GET", "https://a.dev/one", None),
         Ok(&response(200, "{}")),
     )
     .unwrap();
     for _ in 0..5 {
-        history::record(
+        rec(
             &store,
             &spec("GET", "https://a.dev/noise", None),
             Ok(&response(200, "{}")),
@@ -233,7 +242,7 @@ fn bench_100k_search_under_50ms() {
         let path = paths[(i % 5) as usize];
         let body =
             format!(r#"{{"seq":{i},"token":"tok_{i:06}","note":"payload row {i} for {host}"}}"#);
-        history::record(
+        rec(
             &store,
             &spec(
                 "GET",

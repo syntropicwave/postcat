@@ -1,12 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  Collection,
+  CollectionItem,
   EndpointGroup,
+  Environment,
   HistoryDetail,
   HistorySummary,
+  ImportResult,
   RequestSpec,
   RetentionSettings,
   SearchFilters,
   SendResult,
+  Variable,
+  VarScope,
 } from "../types";
 
 // Typed wrappers around Tauri commands. Every backend command gets a wrapper
@@ -26,8 +32,9 @@ export function appInfo(): Promise<AppInfo> {
 export function sendRequest(
   requestId: string,
   spec: RequestSpec,
+  collectionId?: number | null,
 ): Promise<SendResult> {
-  return invoke<SendResult>("send_request", { requestId, spec });
+  return invoke<SendResult>("send_request", { requestId, spec, collectionId });
 }
 
 export function cancelRequest(requestId: string): Promise<void> {
@@ -62,6 +69,126 @@ export function retentionGet(): Promise<RetentionSettings> {
 
 export function retentionSet(settings: RetentionSettings): Promise<void> {
   return invoke("retention_set", { settings });
+}
+
+/* ---------------- collections ---------------- */
+
+export function collectionsList(): Promise<Collection[]> {
+  return invoke<Collection[]>("collections_list");
+}
+
+export function collectionCreate(name: string): Promise<number> {
+  return invoke<number>("collection_create", { name });
+}
+
+export function collectionUpdate(
+  id: number,
+  patch: { name?: string; description?: string },
+): Promise<void> {
+  return invoke("collection_update", { id, ...patch });
+}
+
+export function collectionDelete(id: number): Promise<void> {
+  return invoke("collection_delete", { id });
+}
+
+export function collectionItems(
+  collectionId: number,
+): Promise<CollectionItem[]> {
+  return invoke<CollectionItem[]>("collection_items", { collectionId });
+}
+
+export function itemCreate(args: {
+  collectionId: number;
+  parentId?: number | null;
+  kind: "folder" | "request";
+  name: string;
+  spec?: RequestSpec;
+}): Promise<number> {
+  return invoke<number>("item_create", { ...args });
+}
+
+export function itemUpdate(
+  id: number,
+  patch: { name?: string; description?: string; spec?: RequestSpec },
+): Promise<void> {
+  return invoke("item_update", { id, ...patch });
+}
+
+export function itemMove(
+  id: number,
+  newParentId: number | null,
+  beforeId?: number | null,
+): Promise<void> {
+  return invoke("item_move", { id, newParentId, beforeId });
+}
+
+export function itemDelete(id: number): Promise<void> {
+  return invoke("item_delete", { id });
+}
+
+/* ---------------- environments & variables ---------------- */
+
+export function envList(): Promise<Environment[]> {
+  return invoke<Environment[]>("env_list");
+}
+
+export function envCreate(name: string): Promise<number> {
+  return invoke<number>("env_create", { name });
+}
+
+export function envRename(id: number, name: string): Promise<void> {
+  return invoke("env_rename", { id, name });
+}
+
+export function envDelete(id: number): Promise<void> {
+  return invoke("env_delete", { id });
+}
+
+export function envSetActive(id: number | null): Promise<void> {
+  return invoke("env_set_active", { id });
+}
+
+export function varsGet(
+  scope: VarScope,
+  ownerId?: number | null,
+): Promise<Variable[]> {
+  return invoke<Variable[]>("vars_get", { scope, ownerId });
+}
+
+export function varsSave(
+  scope: VarScope,
+  ownerId: number | null,
+  vars: Variable[],
+): Promise<void> {
+  return invoke("vars_save", { scope, ownerId, vars });
+}
+
+export function varsEffective(
+  collectionId?: number | null,
+): Promise<Variable[]> {
+  return invoke<Variable[]>("vars_effective", { collectionId });
+}
+
+/* ---------------- import / export ---------------- */
+
+export function importText(text: string): Promise<ImportResult> {
+  return invoke<ImportResult>("import_text", { text });
+}
+
+export function importFile(path: string): Promise<ImportResult> {
+  return invoke<ImportResult>("import_file", { path });
+}
+
+export function exportCollectionFile(
+  collectionId: number,
+  path: string,
+): Promise<void> {
+  return invoke("export_collection_file", { collectionId, path });
+}
+
+export function parseCurlCommand(text: string): Promise<RequestSpec> {
+  return invoke<RequestSpec>("parse_curl_command", { text });
 }
 
 export function historyGet(id: number): Promise<HistoryDetail> {

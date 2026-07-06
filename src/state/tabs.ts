@@ -22,6 +22,12 @@ export interface Tab {
   sending: boolean;
   response: SendResult | null;
   responseError: string | null;
+  /// Set when the tab was opened from a collection: variables resolve in
+  /// this collection's scope and Ctrl+S saves back into the item.
+  collectionId: number | null;
+  itemId: number | null;
+  itemName: string | null;
+  dirty: boolean;
 }
 
 interface TabsState {
@@ -29,6 +35,9 @@ interface TabsState {
   activeTabId: string;
   /// Bumped after every send so the history sidebar knows to refetch.
   historyVersion: number;
+  /// Bumped after collection mutations so the collections panel refetches.
+  collectionsVersion: number;
+  bumpCollections: () => void;
   newTab: (partial?: Partial<Tab>) => string;
   closeTab: (id: string) => void;
   setActive: (id: string) => void;
@@ -54,6 +63,10 @@ function makeTab(partial?: Partial<Tab>): Tab {
     sending: false,
     response: null,
     responseError: null,
+    collectionId: null,
+    itemId: null,
+    itemName: null,
+    dirty: false,
     ...partial,
   };
 }
@@ -126,6 +139,9 @@ export const useTabs = create<TabsState>((set, get) => ({
   tabs: [makeTab()],
   activeTabId: "",
   historyVersion: 0,
+  collectionsVersion: 0,
+  bumpCollections: () =>
+    set((s) => ({ collectionsVersion: s.collectionsVersion + 1 })),
 
   newTab: (partial) => {
     const tab = makeTab(partial);
@@ -160,13 +176,21 @@ export const useTabs = create<TabsState>((set, get) => ({
     const disabled = (get().tabs.find((t) => t.id === id)?.params ?? []).filter(
       (p) => !p.enabled,
     );
-    get().updateTab(id, { url, params: [...parseParams(url), ...disabled] });
+    get().updateTab(id, {
+      url,
+      params: [...parseParams(url), ...disabled],
+      dirty: true,
+    });
   },
 
   setParams: (id, params) => {
     const tab = get().tabs.find((t) => t.id === id);
     if (!tab) return;
-    get().updateTab(id, { params, url: buildUrl(tab.url, params) });
+    get().updateTab(id, {
+      params,
+      url: buildUrl(tab.url, params),
+      dirty: true,
+    });
   },
 
   send: async (id) => {
@@ -174,7 +198,7 @@ export const useTabs = create<TabsState>((set, get) => ({
     if (!tab || tab.sending || tab.url.trim() === "") return;
     get().updateTab(id, { sending: true, responseError: null });
     try {
-      const result = await sendRequest(id, specFromTab(tab));
+      const result = await sendRequest(id, specFromTab(tab), tab.collectionId);
       get().updateTab(id, { sending: false, response: result });
     } catch (e) {
       get().updateTab(id, {

@@ -1,9 +1,21 @@
 import { useState } from "react";
 import type { Tab } from "../state/tabs";
-import { useTabs } from "../state/tabs";
+import { useTabs, parseParams, specFromTab } from "../state/tabs";
+import { itemUpdate } from "../ipc/commands";
 import { HTTP_METHODS } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { BodyEditor } from "./BodyEditor";
+import { UrlInput } from "./UrlInput";
+import { SaveDialog } from "./SaveDialog";
+
+/** Save a bound tab in place; unbound tabs open the SaveDialog instead. */
+export async function saveBoundTab(tab: Tab): Promise<boolean> {
+  if (!tab.itemId) return false;
+  await itemUpdate(tab.itemId, { spec: specFromTab(tab) });
+  useTabs.getState().updateTab(tab.id, { dirty: false });
+  useTabs.getState().bumpCollections();
+  return true;
+}
 
 const COMMON_HEADERS = [
   "Accept",
@@ -27,6 +39,11 @@ type Section = "params" | "headers" | "body";
 export function RequestEditor({ tab }: { tab: Tab }) {
   const { updateTab, setUrl, setParams, send, cancel } = useTabs();
   const [section, setSection] = useState<Section>("params");
+  const [saveOpen, setSaveOpen] = useState(false);
+
+  const saveTab = async (t: Tab) => {
+    if (!(await saveBoundTab(t))) setSaveOpen(true);
+  };
 
   const badge = (n: number) => (n > 0 ? ` (${n})` : "");
   const enabledParams = tab.params.filter((p) => p.enabled && p.key).length;
@@ -44,7 +61,9 @@ export function RequestEditor({ tab }: { tab: Tab }) {
         <select
           className={`method method-${tab.method}`}
           value={tab.method}
-          onChange={(e) => updateTab(tab.id, { method: e.target.value })}
+          onChange={(e) =>
+            updateTab(tab.id, { method: e.target.value, dirty: true })
+          }
         >
           {HTTP_METHODS.map((m) => (
             <option key={m} value={m}>
@@ -52,12 +71,21 @@ export function RequestEditor({ tab }: { tab: Tab }) {
             </option>
           ))}
         </select>
-        <input
-          className="url-input"
+        <UrlInput
           value={tab.url}
-          placeholder="https://api.example.com/v1/users?limit=10"
-          spellCheck={false}
-          onChange={(e) => setUrl(tab.id, e.target.value)}
+          collectionId={tab.collectionId}
+          onChange={(url) => setUrl(tab.id, url)}
+          onCurl={(spec) =>
+            updateTab(tab.id, {
+              method: spec.method,
+              url: spec.url,
+              params: parseParams(spec.url),
+              headers: spec.headers,
+              body: spec.body,
+              settings: spec.settings,
+              dirty: true,
+            })
+          }
         />
         {tab.sending ? (
           <button
@@ -72,7 +100,17 @@ export function RequestEditor({ tab }: { tab: Tab }) {
             Send
           </button>
         )}
+        <button
+          type="button"
+          className="save-btn"
+          title="Save to collection (Ctrl+S)"
+          onClick={() => void saveTab(tab)}
+        >
+          Save{tab.dirty && tab.itemId ? " •" : ""}
+        </button>
       </form>
+
+      {saveOpen && <SaveDialog tab={tab} onClose={() => setSaveOpen(false)} />}
 
       <div className="section-tabs">
         <button
@@ -106,7 +144,9 @@ export function RequestEditor({ tab }: { tab: Tab }) {
         {section === "headers" && (
           <KeyValueEditor
             rows={tab.headers}
-            onChange={(rows) => updateTab(tab.id, { headers: rows })}
+            onChange={(rows) =>
+              updateTab(tab.id, { headers: rows, dirty: true })
+            }
             keyPlaceholder="header"
             keySuggestions={COMMON_HEADERS}
             suggestionsId="header-suggestions"
@@ -115,7 +155,7 @@ export function RequestEditor({ tab }: { tab: Tab }) {
         {section === "body" && (
           <BodyEditor
             body={tab.body}
-            onChange={(body) => updateTab(tab.id, { body })}
+            onChange={(body) => updateTab(tab.id, { body, dirty: true })}
           />
         )}
       </div>

@@ -89,6 +89,49 @@ export interface RetentionSettings {
   max_entries: number;
 }
 
+export interface Collection {
+  id: number;
+  name: string;
+  description: string;
+  sort_order: number;
+}
+
+export interface CollectionItem {
+  id: number;
+  collection_id: number;
+  parent_id: number | null;
+  kind: "folder" | "request";
+  name: string;
+  description: string;
+  sort_order: number;
+  req_spec: RequestSpec | null;
+}
+
+export interface Environment {
+  id: number;
+  name: string;
+  is_active: boolean;
+}
+
+export type VarScope = "global" | "environment" | "collection";
+
+export interface Variable {
+  key: string;
+  initial_value: string;
+  current_value: string | null;
+  is_secret: boolean;
+  enabled: boolean;
+}
+
+export interface ImportResult {
+  collection_id: number;
+  name: string;
+  requests: number;
+  folders: number;
+  environments: number;
+  variables: number;
+}
+
 export interface HistoryDetail extends HistorySummary {
   req_spec: RequestSpec;
   req_headers: [string, string][];

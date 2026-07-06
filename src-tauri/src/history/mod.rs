@@ -103,12 +103,22 @@ pub struct RetentionSettings {
     pub max_entries: u32,
 }
 
+/// Record a send into history.
+///
+/// `original` is the unresolved spec (with `{{var}}` placeholders) — stored
+/// as `req_spec` so replay re-resolves against current variables. `display`
+/// is the resolved-and-secret-masked spec used for the visible/searchable
+/// columns. `secrets` are (value, key) pairs to scrub from indexed response
+/// text so secret values are never searchable.
 pub fn record(
     store: &Store,
-    spec: &RequestSpec,
+    original: &RequestSpec,
+    display: &RequestSpec,
+    secrets: &[(String, String)],
     outcome: Result<&HttpResponseData, &str>,
 ) -> Result<i64, StoreError> {
-    let spec_json = serde_json::to_string(spec).unwrap_or_else(|_| "{}".into());
+    let spec = display;
+    let spec_json = serde_json::to_string(original).unwrap_or_else(|_| "{}".into());
     let req_headers = serde_json::to_string(
         &spec
             .headers
@@ -125,7 +135,8 @@ pub fn record(
             Ok(resp) => {
                 let resp_headers =
                     serde_json::to_string(&resp.headers).unwrap_or_else(|_| "[]".into());
-                let resp_body_text = index_text(&resp.body);
+                let resp_body_text =
+                    index_text(&resp.body).map(|t| crate::vars::mask_str(&t, secrets));
                 conn.execute(
                     "INSERT INTO history_entries
                         (method, url, host, req_spec, req_headers, req_body_text,

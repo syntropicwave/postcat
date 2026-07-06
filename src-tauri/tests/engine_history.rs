@@ -8,6 +8,15 @@ use postcat_lib::history::{self, SearchFilters};
 use postcat_lib::http_engine::{self, BodySpec, KeyValue, RequestSpec, SendSettings};
 use postcat_lib::store::Store;
 
+/// record() without variables: original == display, no secrets.
+fn rec(
+    store: &Store,
+    spec: &RequestSpec,
+    outcome: Result<&postcat_lib::http_engine::HttpResponseData, &str>,
+) -> Result<i64, postcat_lib::store::StoreError> {
+    history::record(store, spec, spec, &[], outcome)
+}
+
 fn spawn_server() -> (tiny_http::Server, String) {
     let server = tiny_http::Server::http("127.0.0.1:0").unwrap();
     let addr = format!("http://{}", server.server_addr());
@@ -64,7 +73,7 @@ async fn request_is_executed_and_recorded() {
     assert!(resp.ttfb_ms > 0.0 && resp.ttfb_ms <= resp.duration_ms);
 
     let store = Store::open_in_memory().unwrap();
-    let id = history::record(&store, &spec, Ok(&resp)).unwrap();
+    let id = rec(&store, &spec, Ok(&resp)).unwrap();
 
     let all = SearchFilters::default();
     let list = history::search(&store, &all, 10, 0).unwrap();
@@ -109,7 +118,7 @@ async fn network_error_is_recorded() {
     let err = http_engine::execute(jar, &spec).await.unwrap_err();
 
     let store = Store::open_in_memory().unwrap();
-    let id = history::record(&store, &spec, Err(&err.to_string())).unwrap();
+    let id = rec(&store, &spec, Err(&err.to_string())).unwrap();
 
     let detail = history::get(&store, id).unwrap();
     assert!(detail.summary.error.is_some());

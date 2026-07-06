@@ -14,7 +14,10 @@ export function TabBar() {
           <span className={`tab-method method-${tab.method}`}>
             {tab.method}
           </span>
-          <span className="tab-title">{tabTitle(tab.url)}</span>
+          <span className="tab-title">
+            {tab.itemName ?? tabTitle(tab.url)}
+            {tab.dirty && tab.itemId ? " •" : ""}
+          </span>
           <button
             className="tab-close"
             title="Close tab"
