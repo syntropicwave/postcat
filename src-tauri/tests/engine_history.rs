@@ -4,6 +4,9 @@
 
 use std::sync::Arc;
 
+use postcat_lib::settings::AppSettings;
+use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
+
 use postcat_lib::history::{self, SearchFilters};
 use postcat_lib::http_engine::{self, BodySpec, KeyValue, RequestSpec, SendSettings};
 use postcat_lib::store::Store;
@@ -60,10 +63,13 @@ async fn request_is_executed_and_recorded() {
             text: r#"{"ping":true}"#.into(),
         },
         settings: SendSettings::default(),
+        auth: Default::default(),
     };
 
-    let jar = Arc::new(reqwest::cookie::Jar::default());
-    let resp = http_engine::execute(jar, &spec).await.unwrap();
+    let jar = Arc::new(CookieStoreMutex::new(CookieStore::default()));
+    let resp = http_engine::execute(jar, &spec, &AppSettings::default())
+        .await
+        .unwrap();
     server_thread.join().unwrap();
 
     assert_eq!(resp.status, 200);
@@ -112,10 +118,13 @@ async fn network_error_is_recorded() {
             timeout_ms: 3000,
             ..Default::default()
         },
+        auth: Default::default(),
     };
 
-    let jar = Arc::new(reqwest::cookie::Jar::default());
-    let err = http_engine::execute(jar, &spec).await.unwrap_err();
+    let jar = Arc::new(CookieStoreMutex::new(CookieStore::default()));
+    let err = http_engine::execute(jar, &spec, &AppSettings::default())
+        .await
+        .unwrap_err();
 
     let store = Store::open_in_memory().unwrap();
     let id = rec(&store, &spec, Err(&err.to_string())).unwrap();

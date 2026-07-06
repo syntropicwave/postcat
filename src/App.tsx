@@ -6,6 +6,8 @@ import { EnvBar } from "./components/EnvBar";
 import { RequestEditor, saveBoundTab } from "./components/RequestEditor";
 import { ResponseViewer } from "./components/ResponseViewer";
 import { SaveDialog } from "./components/SaveDialog";
+import { CookieManager } from "./components/CookieManager";
+import { SettingsDialog } from "./components/SettingsDialog";
 import { useTabs } from "./state/tabs";
 import "./App.css";
 
@@ -15,6 +17,8 @@ function App() {
     "history",
   );
   const [saveFor, setSaveFor] = useState<string | null>(null);
+  const [cookiesOpen, setCookiesOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const active = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
 
   useEffect(() => {
@@ -69,6 +73,22 @@ function App() {
         <div className="top-bar">
           <TabBar />
           <EnvBar />
+          <div className="top-actions">
+            <button
+              className="icon-btn"
+              title="Cookies"
+              onClick={() => setCookiesOpen(true)}
+            >
+              🍪
+            </button>
+            <button
+              className="icon-btn"
+              title="Settings (proxy, certificates)"
+              onClick={() => setSettingsOpen(true)}
+            >
+              ⚙
+            </button>
+          </div>
         </div>
         {active && (
           <div className="workspace">
@@ -82,6 +102,10 @@ function App() {
         )}
       </main>
       {saveTab && <SaveDialog tab={saveTab} onClose={() => setSaveFor(null)} />}
+      {cookiesOpen && <CookieManager onClose={() => setCookiesOpen(false)} />}
+      {settingsOpen && (
+        <SettingsDialog onClose={() => setSettingsOpen(false)} />
+      )}
     </div>
   );
 }

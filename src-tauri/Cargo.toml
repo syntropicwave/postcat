@@ -25,13 +25,17 @@ rusqlite = { version = "0.34", features = ["bundled"] }
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-reqwest = { version = "0.12", features = ["cookies", "gzip", "brotli", "deflate", "multipart", "stream", "json"] }
+reqwest = { version = "0.12", features = ["cookies", "gzip", "brotli", "deflate", "multipart", "stream", "json", "native-tls"] }
 tokio = { version = "1", features = ["sync", "time", "macros", "rt-multi-thread"] }
 futures-util = "0.3"
 url = "2"
 base64 = "0.22"
 uuid = { version = "1", features = ["v4"] }
 serde_yaml = "0.9"
+sha2 = "0.10"
+hmac = "0.12"
+hex = "0.4"
+reqwest_cookie_store = "0.8"
 tauri-plugin-dialog = "2"
 
 [dev-dependencies]

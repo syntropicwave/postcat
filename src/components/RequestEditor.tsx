@@ -7,6 +7,8 @@ import { KeyValueEditor } from "./KeyValueEditor";
 import { BodyEditor } from "./BodyEditor";
 import { UrlInput } from "./UrlInput";
 import { SaveDialog } from "./SaveDialog";
+import { AuthEditor } from "./AuthEditor";
+import { CodeDialog } from "./CodeDialog";
 
 /** Save a bound tab in place; unbound tabs open the SaveDialog instead. */
 export async function saveBoundTab(tab: Tab): Promise<boolean> {
@@ -34,12 +36,13 @@ const COMMON_HEADERS = [
   "X-Request-Id",
 ];
 
-type Section = "params" | "headers" | "body";
+type Section = "params" | "auth" | "headers" | "body";
 
 export function RequestEditor({ tab }: { tab: Tab }) {
   const { updateTab, setUrl, setParams, send, cancel } = useTabs();
   const [section, setSection] = useState<Section>("params");
   const [saveOpen, setSaveOpen] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
 
   const saveTab = async (t: Tab) => {
     if (!(await saveBoundTab(t))) setSaveOpen(true);
@@ -108,7 +111,17 @@ export function RequestEditor({ tab }: { tab: Tab }) {
         >
           Save{tab.dirty && tab.itemId ? " •" : ""}
         </button>
+        <button
+          type="button"
+          className="save-btn"
+          title="Generate code snippet"
+          onClick={() => setCodeOpen(true)}
+        >
+          {"</>"}
+        </button>
       </form>
+
+      {codeOpen && <CodeDialog tab={tab} onClose={() => setCodeOpen(false)} />}
 
       {saveOpen && <SaveDialog tab={tab} onClose={() => setSaveOpen(false)} />}
 
@@ -118,6 +131,12 @@ export function RequestEditor({ tab }: { tab: Tab }) {
           onClick={() => setSection("params")}
         >
           Params{badge(enabledParams)}
+        </button>
+        <button
+          className={section === "auth" ? "active" : ""}
+          onClick={() => setSection("auth")}
+        >
+          Auth{tab.auth.kind !== "none" ? " •" : ""}
         </button>
         <button
           className={section === "headers" ? "active" : ""}
@@ -139,6 +158,13 @@ export function RequestEditor({ tab }: { tab: Tab }) {
             rows={tab.params}
             onChange={(rows) => setParams(tab.id, rows)}
             keyPlaceholder="param"
+          />
+        )}
+        {section === "auth" && (
+          <AuthEditor
+            auth={tab.auth}
+            allowInherit={tab.collectionId !== null}
+            onChange={(auth) => updateTab(tab.id, { auth, dirty: true })}
           />
         )}
         {section === "headers" && (

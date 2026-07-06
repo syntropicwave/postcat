@@ -1,24 +1,27 @@
+pub mod auth;
 pub mod collections;
+pub mod cookies;
 pub mod history;
 pub mod http_engine;
 pub mod importers;
+pub mod settings;
 pub mod store;
 pub mod vars;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use tauri::Manager;
+use tauri_plugin_opener::OpenerExt;
 
+use auth::AuthSpec;
 use http_engine::RequestSpec;
 use store::Store;
 
 /// In-flight request cancellation handles, keyed by frontend-generated id.
 #[derive(Default)]
 struct InflightRequests(Mutex<HashMap<String, tokio::sync::oneshot::Sender<()>>>);
-
-struct CookieJar(Arc<reqwest::cookie::Jar>);
 
 #[derive(serde::Serialize)]
 struct AppInfo {
@@ -58,17 +61,38 @@ fn app_info(app: tauri::AppHandle, store: tauri::State<'_, Store>) -> Result<App
 #[tauri::command]
 async fn send_request(
     store: tauri::State<'_, Store>,
-    jar: tauri::State<'_, CookieJar>,
+    jar: tauri::State<'_, cookies::Cookies>,
     inflight: tauri::State<'_, InflightRequests>,
     request_id: String,
     spec: RequestSpec,
     collection_id: Option<i64>,
+    item_id: Option<i64>,
 ) -> Result<SendResult, String> {
     // Resolve {{vars}} now; the unresolved spec is what history replays.
     let resolution = vars::resolve(&store, &spec, collection_id).map_err(|e| e.to_string())?;
-    let display = vars::mask_secrets(&resolution.spec, &resolution.secrets);
-    let secrets = resolution.secrets;
-    let resolved = resolution.spec;
+    let mut secrets = resolution.secrets;
+    let mut resolved = resolution.spec;
+
+    // Effective auth: explicit on the request, or inherited from the tree.
+    let mut effective = auth::effective_auth(&store, &resolved.auth, item_id, collection_id)
+        .map_err(|e| e.to_string())?;
+    if let AuthSpec::Oauth2(cfg) = &effective {
+        if cfg.is_expired() && !cfg.refresh_token.is_empty() {
+            if let Ok(token) = auth::oauth2::refresh_token(cfg).await {
+                let mut updated = cfg.clone();
+                updated.access_token = token.access_token;
+                if !token.refresh_token.is_empty() {
+                    updated.refresh_token = token.refresh_token;
+                }
+                updated.expires_at = token.expires_at;
+                effective = AuthSpec::Oauth2(updated);
+            }
+        }
+    }
+    secrets.extend(auth::apply(&mut resolved, &effective));
+
+    let display = vars::mask_secrets(&resolved, &secrets);
+    let app_settings = settings::get(&store).map_err(|e| e.to_string())?;
 
     let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
     if let Ok(mut map) = inflight.0.lock() {
@@ -76,13 +100,14 @@ async fn send_request(
     }
 
     let outcome = tokio::select! {
-        res = http_engine::execute(jar.0.clone(), &resolved) => Some(res),
+        res = http_engine::execute(jar.store.clone(), &resolved, &app_settings) => Some(res),
         _ = cancel_rx => None,
     };
 
     if let Ok(mut map) = inflight.0.lock() {
         map.remove(&request_id);
     }
+    jar.save();
 
     match outcome {
         None => {
@@ -371,6 +396,91 @@ fn parse_curl_command(text: String) -> Result<RequestSpec, String> {
     importers::parse_curl(&text)
 }
 
+/* ---------------- auth ---------------- */
+
+#[tauri::command]
+fn auth_stored_get(
+    store: tauri::State<'_, Store>,
+    collection_id: Option<i64>,
+    item_id: Option<i64>,
+) -> Result<AuthSpec, String> {
+    auth::stored_auth_get(&store, collection_id, item_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn auth_stored_set(
+    store: tauri::State<'_, Store>,
+    collection_id: Option<i64>,
+    item_id: Option<i64>,
+    auth: AuthSpec,
+) -> Result<(), String> {
+    auth::stored_auth_set(&store, collection_id, item_id, &auth).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn oauth2_fetch_token(
+    config: auth::oauth2::OAuth2Config,
+) -> Result<auth::oauth2::TokenResult, String> {
+    auth::oauth2::fetch_token(&config).await
+}
+
+#[tauri::command]
+async fn oauth2_refresh_token(
+    config: auth::oauth2::OAuth2Config,
+) -> Result<auth::oauth2::TokenResult, String> {
+    auth::oauth2::refresh_token(&config).await
+}
+
+#[tauri::command]
+async fn oauth2_authorize(
+    app: tauri::AppHandle,
+    config: auth::oauth2::OAuth2Config,
+) -> Result<auth::oauth2::TokenResult, String> {
+    auth::oauth2::authorize_interactive(&config, |url| {
+        if let Err(err) = app.opener().open_url(url, None::<String>) {
+            tracing::warn!(%err, "failed to open browser for OAuth flow");
+        }
+    })
+    .await
+}
+
+/* ---------------- cookies ---------------- */
+
+#[tauri::command]
+fn cookies_list(jar: tauri::State<'_, cookies::Cookies>) -> Vec<cookies::CookieInfo> {
+    jar.list()
+}
+
+#[tauri::command]
+fn cookie_delete(
+    jar: tauri::State<'_, cookies::Cookies>,
+    domain: String,
+    path: String,
+    name: String,
+) {
+    jar.delete(&domain, &path, &name);
+}
+
+#[tauri::command]
+fn cookies_clear(jar: tauri::State<'_, cookies::Cookies>) {
+    jar.clear();
+}
+
+/* ---------------- app settings ---------------- */
+
+#[tauri::command]
+fn app_settings_get(store: tauri::State<'_, Store>) -> Result<settings::AppSettings, String> {
+    settings::get(&store).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn app_settings_set(
+    store: tauri::State<'_, Store>,
+    settings_value: settings::AppSettings,
+) -> Result<(), String> {
+    settings::set(&store, &settings_value).map_err(|e| e.to_string())
+}
+
 fn db_path(app: &tauri::AppHandle) -> Result<PathBuf, tauri::Error> {
     Ok(app.path().app_data_dir()?.join("postcat.db"))
 }
@@ -395,7 +505,8 @@ pub fn run() {
             let store = Store::open(&path)?;
             tracing::info!(db = %path.display(), "store opened");
             app.manage(store);
-            app.manage(CookieJar(Arc::new(reqwest::cookie::Jar::default())));
+            let cookie_path = app.path().app_data_dir()?.join("cookies.json");
+            app.manage(cookies::Cookies::load(&cookie_path));
             app.manage(InflightRequests::default());
             Ok(())
         })
@@ -432,7 +543,17 @@ pub fn run() {
             import_text,
             import_file,
             export_collection_file,
-            parse_curl_command
+            parse_curl_command,
+            auth_stored_get,
+            auth_stored_set,
+            oauth2_fetch_token,
+            oauth2_refresh_token,
+            oauth2_authorize,
+            cookies_list,
+            cookie_delete,
+            cookies_clear,
+            app_settings_get,
+            app_settings_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

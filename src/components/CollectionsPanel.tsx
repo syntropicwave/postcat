@@ -16,6 +16,7 @@ import {
 } from "../ipc/commands";
 import { useTabs, parseParams } from "../state/tabs";
 import type { Collection, CollectionItem } from "../types";
+import { StoredAuthDialog } from "./StoredAuthDialog";
 
 export function CollectionsPanel() {
   const collectionsVersion = useTabs((s) => s.collectionsVersion);
@@ -150,6 +151,7 @@ function CollectionNode({
 }) {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(c.name);
+  const [authOpen, setAuthOpen] = useState(false);
 
   const rename = async () => {
     if (draft.trim() && draft !== c.name) {
@@ -201,6 +203,9 @@ function CollectionNode({
           >
             ✎
           </button>
+          <button title="Collection auth" onClick={() => setAuthOpen(true)}>
+            🔑
+          </button>
           <button title="Export as Postman v2.1" onClick={onExport}>
             ⇩
           </button>
@@ -225,6 +230,14 @@ function CollectionNode({
           </button>
         </span>
       </div>
+      {authOpen && (
+        <StoredAuthDialog
+          title={`Auth — ${c.name}`}
+          target={{ collectionId: c.id }}
+          allowInherit={false}
+          onClose={() => setAuthOpen(false)}
+        />
+      )}
       {open && (
         <Tree
           items={items}
@@ -289,6 +302,7 @@ function TreeNode({
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(item.name);
   const [dragOver, setDragOver] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
 
   const openRequest = () => {
     const spec = item.req_spec;
@@ -300,6 +314,7 @@ function TreeNode({
       headers: spec.headers ?? [],
       body: spec.body ?? { kind: "none" },
       settings: spec.settings,
+      auth: spec.auth ?? { kind: "none" },
       collectionId,
       itemId: item.id,
       itemName: item.name,
@@ -380,20 +395,25 @@ function TreeNode({
         )}
         <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
           {isFolder && (
-            <button
-              title="New folder inside"
-              onClick={async () => {
-                await itemCreate({
-                  collectionId,
-                  parentId: item.id,
-                  kind: "folder",
-                  name: "New folder",
-                });
-                onChanged();
-              }}
-            >
-              📁
-            </button>
+            <>
+              <button
+                title="New folder inside"
+                onClick={async () => {
+                  await itemCreate({
+                    collectionId,
+                    parentId: item.id,
+                    kind: "folder",
+                    name: "New folder",
+                  });
+                  onChanged();
+                }}
+              >
+                📁
+              </button>
+              <button title="Folder auth" onClick={() => setAuthOpen(true)}>
+                🔑
+              </button>
+            </>
           )}
           <button
             title="Rename"
@@ -426,6 +446,14 @@ function TreeNode({
           </button>
         </span>
       </div>
+      {authOpen && (
+        <StoredAuthDialog
+          title={`Auth — ${item.name}`}
+          target={{ itemId: item.id }}
+          allowInherit={true}
+          onClose={() => setAuthOpen(false)}
+        />
+      )}
       {isFolder && open && (
         <Tree
           items={items}

@@ -358,6 +358,7 @@ function HistoryItem({
       headers: spec.headers ?? [],
       body: spec.body ?? { kind: "none" },
       settings: spec.settings,
+      auth: spec.auth ?? { kind: "none" },
     });
   };
 
@@ -503,6 +504,7 @@ function EndpointList({ historyVersion }: { historyVersion: number }) {
       headers: spec.headers ?? [],
       body: spec.body ?? { kind: "none" },
       settings: spec.settings,
+      auth: spec.auth ?? { kind: "none" },
     });
   };
 

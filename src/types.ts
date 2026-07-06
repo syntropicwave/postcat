@@ -30,6 +30,7 @@ export interface RequestSpec {
   headers: KeyValue[];
   body: BodySpec;
   settings: SendSettings;
+  auth?: AuthSpec;
 }
 
 export interface SendResult {
@@ -121,6 +122,79 @@ export interface Variable {
   current_value: string | null;
   is_secret: boolean;
   enabled: boolean;
+}
+
+export interface OAuth2Config {
+  grant_type: string;
+  token_url: string;
+  auth_url: string;
+  client_id: string;
+  client_secret: string;
+  scope: string;
+  username: string;
+  password: string;
+  credentials_in_body: boolean;
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+}
+
+export const EMPTY_OAUTH2: OAuth2Config = {
+  grant_type: "client_credentials",
+  token_url: "",
+  auth_url: "",
+  client_id: "",
+  client_secret: "",
+  scope: "",
+  username: "",
+  password: "",
+  credentials_in_body: false,
+  access_token: "",
+  refresh_token: "",
+  expires_at: 0,
+};
+
+export type AuthSpec =
+  | { kind: "none" }
+  | { kind: "inherit" }
+  | { kind: "api_key"; key: string; value: string; in_query: boolean }
+  | { kind: "bearer"; token: string }
+  | { kind: "basic"; username: string; password: string }
+  | ({ kind: "oauth2" } & OAuth2Config)
+  | {
+      kind: "aws_sig_v4";
+      access_key: string;
+      secret_key: string;
+      region: string;
+      service: string;
+      session_token: string;
+    };
+
+export interface TokenResult {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  token_type: string;
+  raw: unknown;
+}
+
+export interface CookieInfo {
+  domain: string;
+  path: string;
+  name: string;
+  value: string;
+  secure: boolean;
+  expires: string | null;
+}
+
+export interface AppSettings {
+  proxy_mode: string;
+  proxy_url: string;
+  ca_cert_paths: string[];
+  client_cert_path: string;
+  client_cert_password: string;
+  max_captured_body_kb: number;
+  default_timeout_ms: number;
 }
 
 export interface ImportResult {

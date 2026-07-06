@@ -2,13 +2,14 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use futures_util::StreamExt;
-use reqwest::cookie::Jar;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE};
+use reqwest_cookie_store::CookieStoreMutex;
 use serde::{Deserialize, Serialize};
 
-/// Hard cap on how much of a response body is kept (stored in history and
-/// shown in the UI). Anything past this is discarded and the entry is marked
-/// truncated. Made configurable in settings later.
+use crate::settings::AppSettings;
+
+/// Default cap on how much of a response body is kept (stored in history and
+/// shown in the UI); configurable via app settings.
 pub const MAX_CAPTURED_BODY: usize = 5 * 1024 * 1024;
 
 fn default_true() -> bool {
@@ -95,6 +96,21 @@ pub struct RequestSpec {
     pub body: BodySpec,
     #[serde(default)]
     pub settings: SendSettings,
+    #[serde(default)]
+    pub auth: crate::auth::AuthSpec,
+}
+
+impl Default for RequestSpec {
+    fn default() -> Self {
+        Self {
+            method: "GET".into(),
+            url: String::new(),
+            headers: vec![],
+            body: BodySpec::None,
+            settings: SendSettings::default(),
+            auth: Default::default(),
+        }
+    }
 }
 
 impl RequestSpec {
@@ -165,13 +181,22 @@ pub enum EngineError {
         path: String,
         source: std::io::Error,
     },
+    #[error("invalid certificate: {0}")]
+    Certificate(String),
+    #[error("invalid proxy: {0}")]
+    Proxy(String),
     #[error("{0}")]
     Request(#[from] reqwest::Error),
 }
 
-pub async fn execute(jar: Arc<Jar>, spec: &RequestSpec) -> Result<HttpResponseData, EngineError> {
-    let client = build_client(jar, &spec.settings)?;
+pub async fn execute(
+    jar: Arc<CookieStoreMutex>,
+    spec: &RequestSpec,
+    app: &AppSettings,
+) -> Result<HttpResponseData, EngineError> {
+    let client = build_client(jar, &spec.settings, app)?;
     let request = build_request(&client, spec)?;
+    let max_captured = (app.max_captured_body_kb as usize).max(64) * 1024;
 
     let started = Instant::now();
     let response = client.execute(request).await?;
@@ -197,8 +222,8 @@ pub async fn execute(jar: Arc<Jar>, spec: &RequestSpec) -> Result<HttpResponseDa
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
         size += chunk.len();
-        if body.len() < MAX_CAPTURED_BODY {
-            let take = (MAX_CAPTURED_BODY - body.len()).min(chunk.len());
+        if body.len() < max_captured {
+            let take = (max_captured - body.len()).min(chunk.len());
             body.extend_from_slice(&chunk[..take]);
             if take < chunk.len() {
                 body_truncated = true;
@@ -222,7 +247,11 @@ pub async fn execute(jar: Arc<Jar>, spec: &RequestSpec) -> Result<HttpResponseDa
     })
 }
 
-fn build_client(jar: Arc<Jar>, settings: &SendSettings) -> Result<reqwest::Client, EngineError> {
+fn build_client(
+    jar: Arc<CookieStoreMutex>,
+    settings: &SendSettings,
+    app: &AppSettings,
+) -> Result<reqwest::Client, EngineError> {
     let redirect = if settings.follow_redirects {
         reqwest::redirect::Policy::limited(settings.max_redirects)
     } else {
@@ -230,12 +259,46 @@ fn build_client(jar: Arc<Jar>, settings: &SendSettings) -> Result<reqwest::Clien
     };
     // A client per request keeps redirect/TLS settings request-scoped; the
     // cookie jar is shared app-wide so sessions survive across requests.
-    Ok(reqwest::Client::builder()
+    let mut builder = reqwest::Client::builder()
         .cookie_provider(jar)
         .redirect(redirect)
         .danger_accept_invalid_certs(!settings.verify_ssl)
-        .timeout(std::time::Duration::from_millis(settings.timeout_ms))
-        .build()?)
+        .timeout(std::time::Duration::from_millis(settings.timeout_ms));
+
+    builder = match app.proxy_mode.as_str() {
+        "none" => builder.no_proxy(),
+        "custom" if !app.proxy_url.is_empty() => builder.proxy(
+            reqwest::Proxy::all(&app.proxy_url).map_err(|e| EngineError::Proxy(e.to_string()))?,
+        ),
+        _ => builder, // "system": reqwest picks up the platform/env proxy
+    };
+
+    for path in &app.ca_cert_paths {
+        if path.trim().is_empty() {
+            continue;
+        }
+        let pem = std::fs::read(path).map_err(|source| EngineError::File {
+            path: path.clone(),
+            source,
+        })?;
+        for cert in reqwest::Certificate::from_pem_bundle(&pem)
+            .map_err(|e| EngineError::Certificate(e.to_string()))?
+        {
+            builder = builder.add_root_certificate(cert);
+        }
+    }
+
+    if !app.client_cert_path.trim().is_empty() {
+        let der = std::fs::read(&app.client_cert_path).map_err(|source| EngineError::File {
+            path: app.client_cert_path.clone(),
+            source,
+        })?;
+        let identity = reqwest::Identity::from_pkcs12_der(&der, &app.client_cert_password)
+            .map_err(|e| EngineError::Certificate(e.to_string()))?;
+        builder = builder.identity(identity);
+    }
+
+    Ok(builder.build()?)
 }
 
 fn build_request(

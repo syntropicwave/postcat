@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { cancelRequest, sendRequest } from "../ipc/commands";
 import type {
+  AuthSpec,
   BodySpec,
   KeyValue,
   RequestSpec,
@@ -19,6 +20,7 @@ export interface Tab {
   headers: KeyValue[];
   body: BodySpec;
   settings: SendSettings;
+  auth: AuthSpec;
   sending: boolean;
   response: SendResult | null;
   responseError: string | null;
@@ -60,6 +62,7 @@ function makeTab(partial?: Partial<Tab>): Tab {
     headers: [],
     body: { kind: "none" },
     settings: { ...DEFAULT_SETTINGS },
+    auth: { kind: "none" },
     sending: false,
     response: null,
     responseError: null,
@@ -123,6 +126,7 @@ export function specFromTab(tab: Tab): RequestSpec {
     headers: tab.headers,
     body: tab.body,
     settings: tab.settings,
+    auth: tab.auth,
   };
 }
 
@@ -198,7 +202,12 @@ export const useTabs = create<TabsState>((set, get) => ({
     if (!tab || tab.sending || tab.url.trim() === "") return;
     get().updateTab(id, { sending: true, responseError: null });
     try {
-      const result = await sendRequest(id, specFromTab(tab), tab.collectionId);
+      const result = await sendRequest(
+        id,
+        specFromTab(tab),
+        tab.collectionId,
+        tab.itemId,
+      );
       get().updateTab(id, { sending: false, response: result });
     } catch (e) {
       get().updateTab(id, {

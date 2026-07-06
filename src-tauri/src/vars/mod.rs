@@ -42,6 +42,7 @@ pub fn resolve_with(spec: &RequestSpec, vars: &[Variable]) -> Resolution {
         h.key = sub(&h.key);
         h.value = sub(&h.value);
     }
+    resolved.auth = spec.auth.substituted(&sub);
     resolved.body = match &spec.body {
         BodySpec::None => BodySpec::None,
         BodySpec::Raw { content_type, text } => BodySpec::Raw {
@@ -199,7 +200,7 @@ pub fn mask_str(input: &str, secrets: &[(String, String)]) -> String {
     out
 }
 
-fn iso8601_from_unix(secs: i64) -> String {
+pub fn iso8601_from_unix(secs: i64) -> String {
     // Days-to-civil conversion (Howard Hinnant's algorithm), UTC.
     let days = secs.div_euclid(86_400);
     let rem = secs.rem_euclid(86_400);
@@ -276,6 +277,7 @@ mod tests {
             }],
             body: BodySpec::None,
             settings: Default::default(),
+            auth: Default::default(),
         };
         let res = resolve_with(&spec, &vars);
         assert_eq!(res.spec.headers[0].value, "Bearer sk-very-secret-123");

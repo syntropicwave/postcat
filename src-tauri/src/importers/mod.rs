@@ -90,13 +90,7 @@ pub fn export_postman(store: &Store, collection_id: i64) -> Result<String, Impor
 /* ------------ shared helpers for importers ------------ */
 
 pub(crate) fn spec_default() -> RequestSpec {
-    RequestSpec {
-        method: "GET".into(),
-        url: String::new(),
-        headers: vec![],
-        body: crate::http_engine::BodySpec::None,
-        settings: Default::default(),
-    }
+    RequestSpec::default()
 }
 
 pub(crate) fn as_str(v: &Value) -> String {

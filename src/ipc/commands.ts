@@ -1,16 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  AppSettings,
+  AuthSpec,
   Collection,
   CollectionItem,
+  CookieInfo,
   EndpointGroup,
   Environment,
   HistoryDetail,
   HistorySummary,
   ImportResult,
+  OAuth2Config,
   RequestSpec,
   RetentionSettings,
   SearchFilters,
   SendResult,
+  TokenResult,
   Variable,
   VarScope,
 } from "../types";
@@ -33,8 +38,14 @@ export function sendRequest(
   requestId: string,
   spec: RequestSpec,
   collectionId?: number | null,
+  itemId?: number | null,
 ): Promise<SendResult> {
-  return invoke<SendResult>("send_request", { requestId, spec, collectionId });
+  return invoke<SendResult>("send_request", {
+    requestId,
+    spec,
+    collectionId,
+    itemId,
+  });
 }
 
 export function cancelRequest(requestId: string): Promise<void> {
@@ -189,6 +200,60 @@ export function exportCollectionFile(
 
 export function parseCurlCommand(text: string): Promise<RequestSpec> {
   return invoke<RequestSpec>("parse_curl_command", { text });
+}
+
+/* ---------------- auth ---------------- */
+
+export function authStoredGet(target: {
+  collectionId?: number;
+  itemId?: number;
+}): Promise<AuthSpec> {
+  return invoke<AuthSpec>("auth_stored_get", { ...target });
+}
+
+export function authStoredSet(
+  target: { collectionId?: number; itemId?: number },
+  auth: AuthSpec,
+): Promise<void> {
+  return invoke("auth_stored_set", { ...target, auth });
+}
+
+export function oauth2FetchToken(config: OAuth2Config): Promise<TokenResult> {
+  return invoke<TokenResult>("oauth2_fetch_token", { config });
+}
+
+export function oauth2RefreshToken(config: OAuth2Config): Promise<TokenResult> {
+  return invoke<TokenResult>("oauth2_refresh_token", { config });
+}
+
+export function oauth2Authorize(config: OAuth2Config): Promise<TokenResult> {
+  return invoke<TokenResult>("oauth2_authorize", { config });
+}
+
+/* ---------------- cookies & settings ---------------- */
+
+export function cookiesList(): Promise<CookieInfo[]> {
+  return invoke<CookieInfo[]>("cookies_list");
+}
+
+export function cookieDelete(
+  domain: string,
+  path: string,
+  name: string,
+): Promise<void> {
+  return invoke("cookie_delete", { domain, path, name });
+}
+
+export function cookiesClear(): Promise<void> {
+  return invoke("cookies_clear");
+}
+
+export function appSettingsGet(): Promise<AppSettings> {
+  return invoke<AppSettings>("app_settings_get");
+}
+
+export function appSettingsSet(settings: AppSettings): Promise<void> {
+  return invoke("app_settings_set", { settingsValue: settings });
 }
 
 export function historyGet(id: number): Promise<HistoryDetail> {

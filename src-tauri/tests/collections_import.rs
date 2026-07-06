@@ -30,6 +30,7 @@ fn collection_tree_crud_and_move() {
         headers: vec![],
         body: BodySpec::None,
         settings: Default::default(),
+        auth: Default::default(),
     };
     let req = collections::item_create(
         &store,
@@ -140,6 +141,7 @@ fn secrets_never_reach_history_or_index() {
         }],
         body: BodySpec::None,
         settings: Default::default(),
+        auth: Default::default(),
     };
 
     let resolution = vars::resolve(&store, &original, None).unwrap();

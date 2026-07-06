@@ -17,6 +17,7 @@ fn spec(method: &str, url: &str, body: Option<&str>) -> RequestSpec {
             })
             .unwrap_or(BodySpec::None),
         settings: SendSettings::default(),
+        auth: Default::default(),
     }
 }
 
