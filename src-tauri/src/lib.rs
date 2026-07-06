@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod collections;
 pub mod cookies;
+pub mod crypto;
 pub mod history;
 pub mod http_engine;
 pub mod importers;
