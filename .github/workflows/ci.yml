@@ -67,3 +67,23 @@ jobs:
       - name: tests
         run: cargo test
         working-directory: src-tauri
+
+  sync-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server
+      - name: rustfmt
+        run: cargo fmt --check
+        working-directory: server
+      - name: clippy
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: server
+      - name: tests
+        run: cargo test
+        working-directory: server

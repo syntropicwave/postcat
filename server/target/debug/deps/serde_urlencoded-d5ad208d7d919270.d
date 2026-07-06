@@ -1,0 +1,11 @@
+C:\Sources\postcat\server\target\debug\deps\serde_urlencoded-d5ad208d7d919270.d: C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\lib.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\de.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\mod.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\key.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\pair.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\part.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\value.rs
+
+C:\Sources\postcat\server\target\debug\deps\libserde_urlencoded-d5ad208d7d919270.rmeta: C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\lib.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\de.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\mod.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\key.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\pair.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\part.rs C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\value.rs
+
+C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\lib.rs:
+C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\de.rs:
+C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\mod.rs:
+C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\key.rs:
+C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\pair.rs:
+C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\part.rs:
+C:\Users\Hi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_urlencoded-0.7.1\src\ser\value.rs:
