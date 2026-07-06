@@ -29,6 +29,8 @@ export interface Tab {
   body: BodySpec;
   settings: SendSettings;
   auth: AuthSpec;
+  /// Values for `:name` path segments in the URL, filled on send.
+  pathVars: Record<string, string>;
   preRequestScript: string;
   testScript: string;
   sending: boolean;
@@ -43,6 +45,8 @@ export interface Tab {
   collectionId: number | null;
   itemId: number | null;
   itemName: string | null;
+  /// Markdown description shown in the Docs tab (saved with the item).
+  description: string;
   dirty: boolean;
 }
 
@@ -83,6 +87,7 @@ function makeTab(partial?: Partial<Tab>): Tab {
     body: { kind: "none" },
     settings: { ...DEFAULT_SETTINGS },
     auth: { kind: "none" },
+    pathVars: {},
     preRequestScript: "",
     testScript: "",
     sending: false,
@@ -94,6 +99,7 @@ function makeTab(partial?: Partial<Tab>): Tab {
     collectionId: null,
     itemId: null,
     itemName: null,
+    description: "",
     dirty: false,
     ...partial,
   };
@@ -147,12 +153,20 @@ function encodeSafe(s: string): string {
 export function specFromTab(tab: Tab): RequestSpec {
   return {
     method: tab.method,
-    url: normalizeUrl(tab.url),
+    url: applyPathVars(normalizeUrl(tab.url), tab.pathVars),
     headers: tab.headers,
     body: tab.body,
     settings: tab.settings,
     auth: tab.auth,
   };
+}
+
+/** Replace `:name` segments with their filled values (unfilled ones stay). */
+function applyPathVars(url: string, pathVars: Record<string, string>): string {
+  return url.replace(/\/:([A-Za-z0-9_]+)/g, (match, name: string) => {
+    const value = pathVars[name];
+    return value ? `/${encodeURIComponent(value)}` : match;
+  });
 }
 
 function normalizeUrl(url: string): string {

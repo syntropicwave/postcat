@@ -211,6 +211,88 @@ pub fn item_move(
     })
 }
 
+/// Deep-copy an item (folders copy their whole subtree). The copy lands
+/// right after the original among its siblings.
+pub fn item_duplicate(store: &Store, id: i64) -> Result<i64, StoreError> {
+    store.with_conn(|conn| {
+        fn copy_subtree(
+            conn: &rusqlite::Connection,
+            id: i64,
+            new_parent: Option<i64>,
+            rename: bool,
+        ) -> Result<i64, rusqlite::Error> {
+            conn.execute(
+                "INSERT INTO collection_items
+                    (collection_id, parent_id, kind, name, description, sort_order,
+                     req_spec, auth, pre_request_script, test_script)
+                 SELECT collection_id,
+                        coalesce(?2, parent_id),
+                        kind,
+                        CASE WHEN ?3 THEN name || ' copy' ELSE name END,
+                        description,
+                        sort_order + CASE WHEN ?3 THEN 1 ELSE 0 END,
+                        req_spec, auth, pre_request_script, test_script
+                 FROM collection_items WHERE id = ?1",
+                params![id, new_parent, rename],
+            )?;
+            let new_id = conn.last_insert_rowid();
+            let children: Vec<i64> = conn
+                .prepare("SELECT id FROM collection_items WHERE parent_id = ?1")?
+                .query_map(params![id], |row| row.get(0))?
+                .collect::<Result<_, _>>()?;
+            for child in children {
+                copy_subtree(conn, child, Some(new_id), false)?;
+            }
+            Ok(new_id)
+        }
+        copy_subtree(conn, id, None, true)
+    })
+}
+
+/// Export an environment as Postman environment JSON.
+pub fn env_export(store: &Store, id: i64) -> Result<String, StoreError> {
+    let name = store.with_conn(|conn| {
+        conn.query_row(
+            "SELECT name FROM environments WHERE id = ?1",
+            params![id],
+            |row| row.get::<_, String>(0),
+        )
+    })?;
+    let vars = vars_get(store, "environment", Some(id))?;
+    let values: Vec<serde_json::Value> = vars
+        .iter()
+        .map(|v| {
+            serde_json::json!({
+                "key": v.key,
+                // Secrets never leave the machine.
+                "value": if v.is_secret { "" } else { v.initial_value.as_str() },
+                "type": if v.is_secret { "secret" } else { "default" },
+                "enabled": v.enabled,
+            })
+        })
+        .collect();
+    let doc = serde_json::json!({
+        "name": name,
+        "values": values,
+        "_postman_variable_scope": "environment",
+    });
+    serde_json::to_string_pretty(&doc).map_err(|_| StoreError::Poisoned)
+}
+
+pub fn env_duplicate(store: &Store, id: i64) -> Result<i64, StoreError> {
+    let name = store.with_conn(|conn| {
+        conn.query_row(
+            "SELECT name FROM environments WHERE id = ?1",
+            params![id],
+            |row| row.get::<_, String>(0),
+        )
+    })?;
+    let new_id = env_create(store, &format!("{name} copy"))?;
+    let vars = vars_get(store, "environment", Some(id))?;
+    vars_save(store, "environment", Some(new_id), &vars)?;
+    Ok(new_id)
+}
+
 pub fn item_delete(store: &Store, id: i64) -> Result<(), StoreError> {
     store.with_conn(|conn| {
         conn.execute("DELETE FROM collection_items WHERE id = ?1", params![id])?;

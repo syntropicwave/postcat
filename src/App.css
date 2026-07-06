@@ -1909,6 +1909,229 @@ button {
   font-size: 12px;
 }
 
+/* ---------- Phase 6.5: parity + palette ---------- */
+
+.kv-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.kv-mode {
+  font-size: 11px;
+  color: var(--accent);
+  padding: 2px 6px;
+}
+
+.kv-bulk {
+  width: 100%;
+  height: 160px;
+  resize: vertical;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.var-input-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+}
+
+.var-input-wrap input {
+  flex: 1;
+  min-width: 0;
+}
+
+.path-vars {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.path-vars-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.path-var-name {
+  width: 226px;
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  padding: 5px 8px;
+}
+
+.docs-editor {
+  width: 100%;
+  height: 100%;
+  min-height: 160px;
+  resize: none;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.response-tools {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+}
+
+.response-tools button {
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.response-tools button:hover,
+.response-tools button.active {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* Extract dialog */
+
+.extract-list {
+  overflow-y: auto;
+  max-height: 40vh;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.extract-row {
+  display: flex;
+  gap: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.extract-row:hover,
+.extract-row.active {
+  background: var(--bg-hover);
+}
+
+.extract-path {
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.extract-value {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extract-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.extract-form input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.extract-form select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.extract-form .primary {
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Command palette */
+
+.palette-backdrop {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+
+.palette {
+  width: 620px;
+  max-width: 90vw;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.4);
+}
+
+.palette-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  font-size: 15px;
+  outline: none;
+}
+
+.palette-list {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.palette-item.active {
+  background: var(--bg-hover);
+}
+
+.palette-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: var(--bg-hover);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.palette-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+}
+
+.palette-sub {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
 /* ---------- Method colors ---------- */
 
 .method-GET {

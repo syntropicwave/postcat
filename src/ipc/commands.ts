@@ -145,6 +145,14 @@ export function itemDelete(id: number): Promise<void> {
   return invoke("item_delete", { id });
 }
 
+export function itemDuplicate(id: number): Promise<number> {
+  return invoke<number>("item_duplicate", { id });
+}
+
+export function historySaveBody(id: number, path: string): Promise<void> {
+  return invoke("history_save_body", { id, path });
+}
+
 /* ---------------- environments & variables ---------------- */
 
 export function envList(): Promise<Environment[]> {
@@ -165,6 +173,14 @@ export function envDelete(id: number): Promise<void> {
 
 export function envSetActive(id: number | null): Promise<void> {
   return invoke("env_set_active", { id });
+}
+
+export function envExportFile(id: number, path: string): Promise<void> {
+  return invoke("env_export_file", { id, path });
+}
+
+export function envDuplicate(id: number): Promise<number> {
+  return invoke<number>("env_duplicate", { id });
 }
 
 export function varsGet(

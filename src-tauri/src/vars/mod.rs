@@ -131,6 +131,50 @@ fn lookup(token: &str, vars: &[Variable]) -> Option<String> {
         .map(|v| v.effective_value().to_owned())
 }
 
+/// Uniform pseudo-random index derived from a fresh UUID (no rand crate).
+fn rand_u32() -> u32 {
+    let bytes = *uuid::Uuid::new_v4().as_bytes();
+    u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
+}
+
+fn pick<'a>(list: &[&'a str]) -> &'a str {
+    list[rand_u32() as usize % list.len()]
+}
+
+const FIRST_NAMES: &[&str] = &[
+    "Anna", "Boris", "Clara", "David", "Elena", "Felix", "Greta", "Hugo", "Iris", "Jonas", "Kira",
+    "Leo", "Marta", "Nikita", "Olga", "Pavel", "Rita", "Simon", "Tanya", "Viktor",
+];
+const LAST_NAMES: &[&str] = &[
+    "Smirnov", "Miller", "Weber", "Novak", "Garcia", "Rossi", "Kim", "Tanaka", "Larsen", "Kovacs",
+    "Petrov", "Schmidt", "Silva", "Moreau", "Janssen", "Olsen",
+];
+const CITIES: &[&str] = &[
+    "Berlin", "Lisbon", "Tallinn", "Osaka", "Toronto", "Prague", "Oslo", "Valencia", "Tbilisi",
+    "Vienna", "Riga", "Porto",
+];
+const COUNTRIES: &[&str] = &[
+    "Germany", "Portugal", "Estonia", "Japan", "Canada", "Czechia", "Norway", "Spain", "Georgia",
+    "Austria",
+];
+const WORDS: &[&str] = &[
+    "amber", "breeze", "cedar", "delta", "ember", "falcon", "granite", "harbor", "indigo",
+    "juniper", "krypton", "lagoon", "meadow", "nimbus", "onyx", "pixel", "quartz", "raven",
+    "summit", "tundra",
+];
+const COMPANIES: &[&str] = &[
+    "Northwind",
+    "Acme Corp",
+    "Globex",
+    "Initech",
+    "Umbrella Labs",
+    "Stark Industries",
+    "Wayne Enterprises",
+    "Hooli",
+    "Aperture",
+    "Vandelay",
+];
+
 /// Postman-compatible dynamic variables (the commonly used subset).
 fn dynamic_value(name: &str) -> Option<String> {
     let now = std::time::SystemTime::now()
@@ -144,7 +188,51 @@ fn dynamic_value(name: &str) -> Option<String> {
             let secs = now.as_secs() as i64;
             Some(iso8601_from_unix(secs))
         }
-        "randomInt" => Some((now.subsec_nanos() % 1001).to_string()),
+        "randomInt" => Some((rand_u32() % 1001).to_string()),
+        "randomBoolean" => Some(rand_u32().is_multiple_of(2).to_string()),
+        "randomFirstName" => Some(pick(FIRST_NAMES).to_owned()),
+        "randomLastName" => Some(pick(LAST_NAMES).to_owned()),
+        "randomFullName" => Some(format!("{} {}", pick(FIRST_NAMES), pick(LAST_NAMES))),
+        "randomUserName" => Some(format!(
+            "{}{}",
+            pick(FIRST_NAMES).to_lowercase(),
+            rand_u32() % 1000
+        )),
+        "randomEmail" => Some(format!(
+            "{}.{}{}@example.com",
+            pick(FIRST_NAMES).to_lowercase(),
+            pick(LAST_NAMES).to_lowercase(),
+            rand_u32() % 100
+        )),
+        "randomCity" => Some(pick(CITIES).to_owned()),
+        "randomCountry" => Some(pick(COUNTRIES).to_owned()),
+        "randomStreetAddress" => Some(format!("{} {} St", rand_u32() % 900 + 1, pick(WORDS))),
+        "randomPhoneNumber" => Some(format!(
+            "+1-{:03}-{:03}-{:04}",
+            rand_u32() % 800 + 200,
+            rand_u32() % 1000,
+            rand_u32() % 10000
+        )),
+        "randomWord" => Some(pick(WORDS).to_owned()),
+        "randomWords" => Some(format!("{} {} {}", pick(WORDS), pick(WORDS), pick(WORDS))),
+        "randomCompanyName" => Some(pick(COMPANIES).to_owned()),
+        "randomUrl" => Some(format!("https://{}.example.com", pick(WORDS))),
+        "randomIP" => Some(format!(
+            "{}.{}.{}.{}",
+            rand_u32() % 223 + 1,
+            rand_u32() % 256,
+            rand_u32() % 256,
+            rand_u32() % 254 + 1
+        )),
+        "randomPort" => Some((rand_u32() % 64512 + 1024).to_string()),
+        "randomColor" => Some(format!("#{:06x}", rand_u32() % 0x1000000)),
+        "randomAlphaNumeric" => Some(uuid::Uuid::new_v4().simple().to_string()[..12].to_owned()),
+        "randomPassword" => Some(format!(
+            "{}{}{}!",
+            pick(WORDS),
+            rand_u32() % 100,
+            pick(WORDS)
+        )),
         _ => None,
     }
 }

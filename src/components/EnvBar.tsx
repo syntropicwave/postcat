@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { confirm } from "@tauri-apps/plugin-dialog";
+import { confirm, save } from "@tauri-apps/plugin-dialog";
 import {
   envCreate,
   envDelete,
+  envDuplicate,
+  envExportFile,
   envList,
   envRename,
   envSetActive,
@@ -169,6 +171,27 @@ function EnvHeader({
           Activate
         </button>
       )}
+      <button
+        title="Duplicate"
+        onClick={async () => {
+          await envDuplicate(env.id);
+          onChanged();
+        }}
+      >
+        Duplicate
+      </button>
+      <button
+        title="Export as Postman environment"
+        onClick={async () => {
+          const path = await save({
+            defaultPath: `${env.name.replace(/[^\w-]+/g, "_")}.postman_environment.json`,
+            filters: [{ name: "Postman Environment", extensions: ["json"] }],
+          });
+          if (path) await envExportFile(env.id, path);
+        }}
+      >
+        Export
+      </button>
       <button
         onClick={async () => {
           if (

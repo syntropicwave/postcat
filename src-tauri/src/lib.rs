@@ -430,6 +430,37 @@ fn item_delete(store: tauri::State<'_, Store>, id: i64) -> Result<(), String> {
     collections::item_delete(&store, id).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn item_duplicate(store: tauri::State<'_, Store>, id: i64) -> Result<i64, String> {
+    collections::item_duplicate(&store, id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn env_export_file(store: tauri::State<'_, Store>, id: i64, path: String) -> Result<(), String> {
+    let json = collections::env_export(&store, id).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn env_duplicate(store: tauri::State<'_, Store>, id: i64) -> Result<i64, String> {
+    collections::env_duplicate(&store, id).map_err(|e| e.to_string())
+}
+
+/// Write a history entry's response body to a file (full, uncapped).
+#[tauri::command]
+fn history_save_body(store: tauri::State<'_, Store>, id: i64, path: String) -> Result<(), String> {
+    let body: Option<Vec<u8>> = store
+        .with_conn(|conn| {
+            conn.query_row(
+                "SELECT resp_body FROM history_entries WHERE id = ?1",
+                rusqlite::params![id],
+                |row| row.get(0),
+            )
+        })
+        .map_err(|e| e.to_string())?;
+    std::fs::write(&path, body.unwrap_or_default()).map_err(|e| e.to_string())
+}
+
 /* ---------------- environments & variables ---------------- */
 
 #[tauri::command]
@@ -920,7 +951,11 @@ pub fn run() {
             graphql_introspect,
             ws_connect,
             ws_send,
-            ws_close
+            ws_close,
+            item_duplicate,
+            env_export_file,
+            env_duplicate,
+            history_save_body
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

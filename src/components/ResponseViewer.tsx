@@ -1,10 +1,14 @@
 import { useMemo, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
+import { EditorView } from "@codemirror/view";
 import { json } from "@codemirror/lang-json";
 import { html } from "@codemirror/lang-html";
 import { xml } from "@codemirror/lang-xml";
+import { save } from "@tauri-apps/plugin-dialog";
+import { historySaveBody } from "../ipc/commands";
 import type { SendResult } from "../types";
 import { usePrefersDark } from "../hooks/usePrefersDark";
+import { ExtractDialog } from "./ExtractDialog";
 
 type View = "pretty" | "raw" | "preview" | "headers" | "tests";
 
@@ -13,6 +17,9 @@ interface Props {
   error: string | null;
   sending: boolean;
   streamText?: string;
+  collectionId?: number | null;
+  /** Opens a diff against the previous response for this endpoint. */
+  onDiffPrevious?: () => void;
 }
 
 export function ResponseViewer({
@@ -20,8 +27,28 @@ export function ResponseViewer({
   error,
   sending,
   streamText,
+  collectionId = null,
+  onDiffPrevious,
 }: Props) {
   const [view, setView] = useState<View>("pretty");
+  const [wrap, setWrap] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [extractOpen, setExtractOpen] = useState(false);
+
+  const copyBody = (text: string) => {
+    const done = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    };
+    navigator.clipboard?.writeText(text).then(done, done);
+  };
+
+  const saveBody = async (r: SendResult) => {
+    const path = await save({
+      defaultPath: guessFilename(r),
+    });
+    if (path) await historySaveBody(r.history_id, path);
+  };
 
   if (sending) {
     // Live SSE stream: show events as they arrive.
@@ -96,19 +123,78 @@ export function ResponseViewer({
               {response.tests.length})
             </button>
           )}
+          <span className="response-tools">
+            {onDiffPrevious && (
+              <button
+                title="Diff vs previous response"
+                onClick={onDiffPrevious}
+              >
+                ⇆ prev
+              </button>
+            )}
+            <button
+              title="Extract a value into a variable"
+              onClick={() => setExtractOpen(true)}
+            >
+              extract
+            </button>
+            <button
+              className={wrap ? "active" : ""}
+              title="Toggle word wrap"
+              onClick={() => setWrap((w) => !w)}
+            >
+              wrap
+            </button>
+            <button
+              title="Copy body"
+              onClick={() => copyBody(response.body_text ?? "")}
+            >
+              {copied ? "✓" : "copy"}
+            </button>
+            <button
+              title="Save body to file"
+              onClick={() => void saveBody(response)}
+            >
+              save
+            </button>
+          </span>
         </span>
       </div>
-      <ResponseBody response={response} view={view} />
+      <ResponseBody response={response} view={view} wrap={wrap} />
+      {extractOpen && (
+        <ExtractDialog
+          bodyText={response.body_text ?? ""}
+          collectionId={collectionId}
+          onClose={() => setExtractOpen(false)}
+        />
+      )}
     </div>
   );
+}
+
+function guessFilename(r: SendResult): string {
+  const ct =
+    r.headers.find(([k]) => k.toLowerCase() === "content-type")?.[1] ?? "";
+  const ext = ct.includes("json")
+    ? "json"
+    : ct.includes("xml")
+      ? "xml"
+      : ct.includes("html")
+        ? "html"
+        : ct.startsWith("image/")
+          ? ct.slice(6).split(";")[0]
+          : "txt";
+  return `response.${ext}`;
 }
 
 function ResponseBody({
   response,
   view,
+  wrap,
 }: {
   response: SendResult;
   view: View;
+  wrap: boolean;
 }) {
   const dark = usePrefersDark();
   const contentType =
@@ -225,7 +311,7 @@ function ResponseBody({
       readOnly
       height="100%"
       theme={dark ? "dark" : "light"}
-      extensions={extensions}
+      extensions={wrap ? [...extensions, EditorView.lineWrapping] : extensions}
     />
   );
 }

@@ -7,6 +7,7 @@ import { HTTP_METHODS } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { BodyEditor } from "./BodyEditor";
 import { UrlInput } from "./UrlInput";
+import { VarInput } from "./VarInput";
 import { SaveDialog } from "./SaveDialog";
 import { AuthEditor } from "./AuthEditor";
 import { CodeDialog } from "./CodeDialog";
@@ -14,7 +15,10 @@ import { CodeDialog } from "./CodeDialog";
 /** Save a bound tab in place; unbound tabs open the SaveDialog instead. */
 export async function saveBoundTab(tab: Tab): Promise<boolean> {
   if (!tab.itemId) return false;
-  await itemUpdate(tab.itemId, { spec: specFromTab(tab) });
+  await itemUpdate(tab.itemId, {
+    spec: specFromTab(tab),
+    description: tab.description,
+  });
   await itemScriptsSet(
     tab.itemId,
     tab.preRequestScript || null,
@@ -23,6 +27,104 @@ export async function saveBoundTab(tab: Tab): Promise<boolean> {
   useTabs.getState().updateTab(tab.id, { dirty: false });
   useTabs.getState().bumpCollections();
   return true;
+}
+
+/**
+ * Path variables: `:id`-style segments in the URL become editable rows. The
+ * value fills a `{{__path_<name>}}`-free substitution done here on send by
+ * rewriting the URL — but simplest is to keep values in the URL directly, so
+ * here we just surface them and let the user rename/fill via the URL itself.
+ * We track values in a local map and rewrite the URL when they change.
+ */
+function PathVariables({ tab }: { tab: Tab }) {
+  const { updateTab } = useTabs();
+  const segments = extractPathVars(tab.url);
+  if (segments.length === 0) return null;
+
+  return (
+    <div className="path-vars">
+      <div className="path-vars-title">Path variables</div>
+      {segments.map((name) => (
+        <div className="kv-row" key={name}>
+          <span className="path-var-name">:{name}</span>
+          <VarInput
+            className="kv-value"
+            value={tab.pathVars[name] ?? ""}
+            collectionId={tab.collectionId}
+            placeholder={`value for :${name}`}
+            onChange={(value) =>
+              updateTab(tab.id, {
+                pathVars: { ...tab.pathVars, [name]: value },
+                dirty: true,
+              })
+            }
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function extractPathVars(url: string): string[] {
+  const base = url.split("?")[0];
+  const found = new Set<string>();
+  const re = /\/:([A-Za-z0-9_]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(base)) !== null) found.add(m[1]);
+  return [...found];
+}
+
+/** Method dropdown that also accepts a typed custom method (PROPFIND, PURGE…). */
+function MethodSelect({
+  method,
+  onChange,
+}: {
+  method: string;
+  onChange: (method: string) => void;
+}) {
+  const [custom, setCustom] = useState(
+    !HTTP_METHODS.includes(method as (typeof HTTP_METHODS)[number]),
+  );
+
+  if (custom) {
+    return (
+      <input
+        className={`method method-${method}`}
+        value={method}
+        autoFocus
+        spellCheck={false}
+        title="Custom method — pick from the list to go back"
+        onChange={(e) => onChange(e.target.value.toUpperCase())}
+        onBlur={(e) => {
+          if (e.target.value.trim() === "") {
+            setCustom(false);
+            onChange("GET");
+          }
+        }}
+      />
+    );
+  }
+  return (
+    <select
+      className={`method method-${method}`}
+      value={method}
+      onChange={(e) => {
+        if (e.target.value === "__custom__") {
+          setCustom(true);
+          onChange("");
+        } else {
+          onChange(e.target.value);
+        }
+      }}
+    >
+      {HTTP_METHODS.map((m) => (
+        <option key={m} value={m}>
+          {m}
+        </option>
+      ))}
+      <option value="__custom__">Custom…</option>
+    </select>
+  );
 }
 
 /** Per-request send settings (timeout, redirects, SSL). */
@@ -98,7 +200,7 @@ const COMMON_HEADERS = [
   "X-Request-Id",
 ];
 
-type Section = "params" | "auth" | "headers" | "body" | "scripts";
+type Section = "params" | "auth" | "headers" | "body" | "scripts" | "docs";
 
 export function RequestEditor({ tab }: { tab: Tab }) {
   const { updateTab, setUrl, setParams, send, cancel } = useTabs();
@@ -123,19 +225,10 @@ export function RequestEditor({ tab }: { tab: Tab }) {
           void send(tab.id);
         }}
       >
-        <select
-          className={`method method-${tab.method}`}
-          value={tab.method}
-          onChange={(e) =>
-            updateTab(tab.id, { method: e.target.value, dirty: true })
-          }
-        >
-          {HTTP_METHODS.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
+        <MethodSelect
+          method={tab.method}
+          onChange={(method) => updateTab(tab.id, { method, dirty: true })}
+        />
         <UrlInput
           value={tab.url}
           collectionId={tab.collectionId}
@@ -231,15 +324,25 @@ export function RequestEditor({ tab }: { tab: Tab }) {
         >
           Scripts{tab.preRequestScript || tab.testScript ? " •" : ""}
         </button>
+        <button
+          className={section === "docs" ? "active" : ""}
+          onClick={() => setSection("docs")}
+        >
+          Docs{tab.description ? " •" : ""}
+        </button>
       </div>
 
       <div className="section-content">
         {section === "params" && (
-          <KeyValueEditor
-            rows={tab.params}
-            onChange={(rows) => setParams(tab.id, rows)}
-            keyPlaceholder="param"
-          />
+          <>
+            <KeyValueEditor
+              rows={tab.params}
+              onChange={(rows) => setParams(tab.id, rows)}
+              keyPlaceholder="param"
+              collectionId={tab.collectionId}
+            />
+            <PathVariables tab={tab} />
+          </>
         )}
         {section === "auth" && (
           <AuthEditor
@@ -257,6 +360,7 @@ export function RequestEditor({ tab }: { tab: Tab }) {
             keyPlaceholder="header"
             keySuggestions={COMMON_HEADERS}
             suggestionsId="header-suggestions"
+            collectionId={tab.collectionId}
           />
         )}
         {section === "body" && (
@@ -278,6 +382,16 @@ export function RequestEditor({ tab }: { tab: Tab }) {
                 testScript: test,
                 dirty: true,
               })
+            }
+          />
+        )}
+        {section === "docs" && (
+          <textarea
+            className="docs-editor"
+            value={tab.description}
+            placeholder="Describe this request (Markdown). Saved with the request in its collection."
+            onChange={(e) =>
+              updateTab(tab.id, { description: e.target.value, dirty: true })
             }
           />
         )}

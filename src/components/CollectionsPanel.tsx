@@ -11,6 +11,7 @@ import {
   importText,
   itemCreate,
   itemDelete,
+  itemDuplicate,
   itemMove,
   itemUpdate,
 } from "../ipc/commands";
@@ -341,6 +342,7 @@ function TreeNode({
       auth: spec.auth ?? { kind: "none" },
       preRequestScript: item.pre_request_script ?? "",
       testScript: item.test_script ?? "",
+      description: item.description ?? "",
       collectionId,
       itemId: item.id,
       itemName: item.name,
@@ -455,6 +457,15 @@ function TreeNode({
             }}
           >
             ✎
+          </button>
+          <button
+            title="Duplicate"
+            onClick={async () => {
+              await itemDuplicate(item.id);
+              onChanged();
+            }}
+          >
+            ⧉
           </button>
           <button
             title="Delete"

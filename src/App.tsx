@@ -9,8 +9,11 @@ import { SaveDialog } from "./components/SaveDialog";
 import { CookieManager } from "./components/CookieManager";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { WsPanel } from "./components/WsPanel";
+import { CommandPalette } from "./components/CommandPalette";
+import { DiffView } from "./components/DiffView";
 import { useTabs, isWsUrl } from "./state/tabs";
 import { listen } from "@tauri-apps/api/event";
+import { historySearch } from "./ipc/commands";
 import type { WsEvent } from "./types";
 import "./App.css";
 
@@ -22,7 +25,24 @@ function App() {
   const [saveFor, setSaveFor] = useState<string | null>(null);
   const [cookiesOpen, setCookiesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [diffPair, setDiffPair] = useState<[number, number] | null>(null);
   const active = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
+
+  // "Diff vs previous": find the prior response for this endpoint.
+  const diffPrevious = active?.response
+    ? async () => {
+        const method = active.method;
+        const urlBase = active.url.split("?")[0];
+        const prior = await historySearch(
+          { endpoint: { method, url_base: urlBase } },
+          { limit: 5 },
+        );
+        const currentId = active.response?.history_id;
+        const previous = prior.find((e) => e.id !== currentId);
+        if (currentId && previous) setDiffPair([previous.id, currentId]);
+      }
+    : undefined;
 
   // Global WebSocket event stream → per-tab message logs.
   useEffect(() => {
@@ -55,6 +75,9 @@ function App() {
             if (!saved) setSaveFor(tab.id);
           });
         }
+      } else if (e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -114,6 +137,8 @@ function App() {
                 error={active.responseError}
                 sending={active.sending}
                 streamText={active.streamText}
+                collectionId={active.collectionId}
+                onDiffPrevious={diffPrevious}
               />
             )}
           </div>
@@ -123,6 +148,10 @@ function App() {
       {cookiesOpen && <CookieManager onClose={() => setCookiesOpen(false)} />}
       {settingsOpen && (
         <SettingsDialog onClose={() => setSettingsOpen(false)} />
+      )}
+      {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
+      {diffPair && (
+        <DiffView ids={diffPair} onClose={() => setDiffPair(null)} />
       )}
     </div>
   );

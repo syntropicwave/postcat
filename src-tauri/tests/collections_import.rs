@@ -64,6 +64,52 @@ fn collection_tree_crud_and_move() {
 }
 
 #[test]
+fn item_duplicate_deep_copies_folders() {
+    let store = Store::open_in_memory().unwrap();
+    let cid = collections::create(&store, "C").unwrap();
+    let folder = collections::item_create(&store, cid, None, "folder", "Users", None).unwrap();
+    let spec = RequestSpec {
+        url: "https://a.dev/u".into(),
+        ..Default::default()
+    };
+    collections::item_create(&store, cid, Some(folder), "request", "List", Some(&spec)).unwrap();
+
+    let copy_id = collections::item_duplicate(&store, folder).unwrap();
+    let items = collections::items(&store, cid).unwrap();
+    assert_eq!(items.len(), 4); // 2 originals + 2 copies
+
+    let copy = items.iter().find(|i| i.id == copy_id).unwrap();
+    assert_eq!(copy.name, "Users copy");
+    let child_copy = items.iter().find(|i| i.parent_id == Some(copy_id)).unwrap();
+    assert_eq!(child_copy.name, "List"); // children keep their names
+    assert!(child_copy.req_spec.is_some());
+}
+
+#[test]
+fn env_export_and_duplicate() {
+    let store = Store::open_in_memory().unwrap();
+    let eid = collections::env_create(&store, "prod").unwrap();
+    collections::vars_save(
+        &store,
+        "environment",
+        Some(eid),
+        &[var("host", "prod.dev", false), var("key", "sssh", true)],
+    )
+    .unwrap();
+
+    let json = collections::env_export(&store, eid).unwrap();
+    let doc: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(doc["name"], "prod");
+    let values = doc["values"].as_array().unwrap();
+    let secret = values.iter().find(|v| v["key"] == "key").unwrap();
+    assert_eq!(secret["value"], ""); // secrets exported empty
+
+    let copy = collections::env_duplicate(&store, eid).unwrap();
+    let copied_vars = collections::vars_get(&store, "environment", Some(copy)).unwrap();
+    assert_eq!(copied_vars.len(), 2);
+}
+
+#[test]
 fn variable_scope_precedence() {
     let store = Store::open_in_memory().unwrap();
     let cid = collections::create(&store, "C").unwrap();
