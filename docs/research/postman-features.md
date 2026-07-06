@@ -9,6 +9,7 @@
 **HTTP methods:** GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, plus arbitrary custom methods (free-text method field).
 
 **URL & params:**
+
 - URL bar with automatic parsing of query params into a key-value **Params** table (bidirectional sync: edit table or URL).
 - **Path variables** (`:id` segments) get their own rows in the params table.
 - Variables (`{{baseUrl}}`) usable anywhere in URL, params, headers, body, with autocomplete and hover-to-see-value.
@@ -18,6 +19,7 @@
 **Headers:** key-value editor with autocomplete of standard header names, auto-generated headers (Host, Content-Length, auth headers) shown in a collapsible "hidden headers" section; header presets (saved reusable header groups).
 
 **Body editors:**
+
 - `none`
 - `form-data` — key-value with text or **file** values; per-row content-type override
 - `x-www-form-urlencoded`
@@ -33,21 +35,21 @@ Other core request features: request renaming/description, saving requests to co
 
 Auth is set on the **Authorization tab**; Postman auto-injects the right headers/params. Full list:
 
-| Type | Notes |
-|---|---|
-| No Auth / Inherit from parent | Inheritance from folder/collection is the default — a key design feature |
-| API Key | key/value, placed in header **or** query param |
-| Bearer Token | `Authorization: Bearer <token>` |
-| JWT Bearer | Generates JWT from configurable algorithm/secret/payload in-app |
-| Basic Auth | username/password → Base64 |
-| Digest Auth | with auto-retry on 401 challenge |
-| OAuth 1.0 | signature methods incl. HMAC-SHA1/256, adds to header or body/URL |
-| OAuth 2.0 | Full token-acquisition UI: grant types = Authorization Code (**with PKCE**), Implicit, Password Credentials, Client Credentials; opens browser or embedded window for consent; **token management** (stores, names, refreshes tokens; auto-refresh support); configurable client auth (body vs Basic header) |
-| Hawk | partial cryptographic verification |
-| AWS Signature (SigV4) | AccessKey/SecretKey/Region/Service, session token support |
-| NTLM (Windows) | challenge-response, v1/v2 |
-| Akamai EdgeGrid | vendor-specific helper |
-| ASAP (Atlassian S2S) | JWT bearer variant |
+| Type                          | Notes                                                                                                                                                                                                                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| No Auth / Inherit from parent | Inheritance from folder/collection is the default — a key design feature                                                                                                                                                                                                                                     |
+| API Key                       | key/value, placed in header **or** query param                                                                                                                                                                                                                                                               |
+| Bearer Token                  | `Authorization: Bearer <token>`                                                                                                                                                                                                                                                                              |
+| JWT Bearer                    | Generates JWT from configurable algorithm/secret/payload in-app                                                                                                                                                                                                                                              |
+| Basic Auth                    | username/password → Base64                                                                                                                                                                                                                                                                                   |
+| Digest Auth                   | with auto-retry on 401 challenge                                                                                                                                                                                                                                                                             |
+| OAuth 1.0                     | signature methods incl. HMAC-SHA1/256, adds to header or body/URL                                                                                                                                                                                                                                            |
+| OAuth 2.0                     | Full token-acquisition UI: grant types = Authorization Code (**with PKCE**), Implicit, Password Credentials, Client Credentials; opens browser or embedded window for consent; **token management** (stores, names, refreshes tokens; auto-refresh support); configurable client auth (body vs Basic header) |
+| Hawk                          | partial cryptographic verification                                                                                                                                                                                                                                                                           |
+| AWS Signature (SigV4)         | AccessKey/SecretKey/Region/Service, session token support                                                                                                                                                                                                                                                    |
+| NTLM (Windows)                | challenge-response, v1/v2                                                                                                                                                                                                                                                                                    |
+| Akamai EdgeGrid               | vendor-specific helper                                                                                                                                                                                                                                                                                       |
+| ASAP (Atlassian S2S)          | JWT bearer variant                                                                                                                                                                                                                                                                                           |
 
 Advanced/cloud-tied: "Guided Auth" for public APIs, team-shared token vaults. The per-request helpers above are all local/core.
 
@@ -63,6 +65,7 @@ Advanced/cloud-tied: "Guided Auth" for public APIs, team-shared token vaults. Th
 ## 4. History (Core — and Postman's weak spot)
 
 **How it works:**
+
 - Sidebar **History tab** logs every sent request, grouped by date.
 - Stores: method, URL, params, headers, body, auth of the request. **Responses are NOT saved by default** — user must toggle "Save Responses" in History options.
 - Collection runs are stored as summarized run entries, not individual requests.
@@ -70,7 +73,8 @@ Advanced/cloud-tied: "Guided Auth" for public APIs, team-shared token vaults. Th
 - Actions: search bar, add request back to a collection ("+"), multi-select (Ctrl/Cmd+click) for bulk delete/save, delete single item, Clear All.
 
 **Known limitations & user complaints (postcat's differentiation target):**
-- **Lazy loading breaks search:** Postman loads only a few days of history at a time; the search box only searches *loaded* entries, so finding a request from a month ago requires minutes of incremental scrolling, and the loaded window resets on restart ([GitHub #9566](https://github.com/postmanlabs/postman-app-support/issues/9566), [#9513](https://github.com/postmanlabs/postman-app-support/issues/9513)).
+
+- **Lazy loading breaks search:** Postman loads only a few days of history at a time; the search box only searches _loaded_ entries, so finding a request from a month ago requires minutes of incremental scrolling, and the loaded window resets on restart ([GitHub #9566](https://github.com/postmanlabs/postman-app-support/issues/9566), [#9513](https://github.com/postmanlabs/postman-app-support/issues/9513)).
 - **Search is URL/name-only.** Users explicitly ask for (and don't get) **search by request body content and by date range** ([community thread](https://community.postman.com/t/is-there-any-way-to-search-the-request-body-in-history-or-search-by-specific-date/7784)).
 - No filter by method, status code, host, or workspace; no diffing between history entries.
 - **Retention tied to plan/login:** on sign-out only the last ~10 requests survive locally (100 on paid tiers per community reports).
@@ -106,16 +110,16 @@ Advanced/cloud-tied: "Guided Auth" for public APIs, team-shared token vaults. Th
 
 ## 8. Protocol Support Beyond HTTP
 
-| Protocol | Support level |
-|---|---|
-| **GraphQL** | Dedicated GraphQL client: auto **introspection**, schema explorer, click-to-build visual query builder, variables pane, multi-query selection; also usable as plain HTTP body type. Core. |
-| **WebSocket** | Raw WS requests: connect, send/receive messages (text/JSON/XML/binary views), saved messages, headers/params on handshake, reconnect settings, message search. Core (desktop app only). |
-| **Socket.IO** | First-class wrapper: event-based emit with args, **listen to named events**, acknowledgements, v2/v3/v4 client selection. Core (desktop only). |
-| **gRPC** | Import `.proto` / server reflection, unary + client/server/bidi **streaming**, metadata, TLS, message templates, assertions via scripts. Core (desktop only). |
-| **MQTT** | v3.1.1 and v5: connect to broker, subscribe to topics, publish, QoS, wills, TLS/self-signed certs, real-time visualization of received messages. Newer, beta-ish. |
-| **SSE** | Handled through a normal HTTP request; Postman keeps the connection open and streams events into the response pane. Core. |
-| **SOAP** | Via raw XML HTTP requests + WSDL import (no dedicated client). |
-| gRPC-Web, MCP | MCP (Model Context Protocol) client added recently in the request builder. |
+| Protocol      | Support level                                                                                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **GraphQL**   | Dedicated GraphQL client: auto **introspection**, schema explorer, click-to-build visual query builder, variables pane, multi-query selection; also usable as plain HTTP body type. Core. |
+| **WebSocket** | Raw WS requests: connect, send/receive messages (text/JSON/XML/binary views), saved messages, headers/params on handshake, reconnect settings, message search. Core (desktop app only).   |
+| **Socket.IO** | First-class wrapper: event-based emit with args, **listen to named events**, acknowledgements, v2/v3/v4 client selection. Core (desktop only).                                            |
+| **gRPC**      | Import `.proto` / server reflection, unary + client/server/bidi **streaming**, metadata, TLS, message templates, assertions via scripts. Core (desktop only).                             |
+| **MQTT**      | v3.1.1 and v5: connect to broker, subscribe to topics, publish, QoS, wills, TLS/self-signed certs, real-time visualization of received messages. Newer, beta-ish.                         |
+| **SSE**       | Handled through a normal HTTP request; Postman keeps the connection open and streams events into the response pane. Core.                                                                 |
+| **SOAP**      | Via raw XML HTTP requests + WSDL import (no dedicated client).                                                                                                                            |
+| gRPC-Web, MCP | MCP (Model Context Protocol) client added recently in the request builder.                                                                                                                |
 
 Note: non-HTTP protocols mostly require login/workspace and the desktop app (not the web client).
 
@@ -136,6 +140,7 @@ Note: non-HTTP protocols mostly require login/workspace and the desktop app (not
 **Works locally:** the request engine itself, scripting sandbox, code generators, proxy/interceptor capture, certificates, Newman CLI runs against exported JSON.
 
 **Major criticisms (well documented):**
+
 1. **Forced login / Scratch Pad removal (Sept 2023).** Offline Scratch Pad was killed; opening collections now requires a cloud account. The replacement "**lightweight API client**" (no-login mode) is deliberately crippled: requests + history only — **no collections, no environments/variables, no tests, no import/export of saved work** ([Postman blog](https://blog.postman.com/announcing-new-lightweight-postman-api-client/), [community backlash](https://community.postman.com/t/postman-stopped-supporting-scratch-pad-what-next/52530), [v10 offline thread](https://community.postman.com/t/postman-version-10-no-more-offline-mode-renders-postman-useless-for-many-developers/48812)).
 2. **Data residency/security concerns** — all collections (often containing tokens, internal URLs) sync to Postman's cloud; many enterprises banned it after the 2023 change.
 3. **Bloat & performance** — Electron app with heavy startup bundles, high memory/CPU, sluggishness during collection runs; long-running GitHub issues ([#7294](https://github.com/postmanlabs/postman-app-support/issues/7294), [macOS 26 GPU issue #13836](https://github.com/postmanlabs/postman-app-support/issues/13836); [HN: "so incredibly bloated and slow"](https://news.ycombinator.com/item?id=30177337)).

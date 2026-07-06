@@ -1,0 +1,41 @@
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  color: #0f0f0f;
+  background-color: #f6f6f6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  margin: 0;
+  padding: 10vh 2rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.app-info {
+  color: #666;
+  font-size: 0.85rem;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.app-error {
+  color: #b3261e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #f6f6f6;
+    background-color: #1b1b1e;
+  }
+
+  .app-info {
+    color: #9a9a9a;
+  }
+}
