@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import {
   hostAliasesList,
@@ -38,17 +39,46 @@ export const useHostAliases = create<State>((set, get) => ({
   },
 }));
 
-/** Look up an alias for a host string, case-insensitively. Non-reactive. */
-export function aliasForHost(host: string | null): HostAlias | undefined {
-  if (!host) return undefined;
-  return useHostAliases.getState().byHost[host.toLowerCase()];
+/** Exact lookup for an alias by its key (the stored prefix), reactive. */
+export function useAliasByKey(key: string): HostAlias | undefined {
+  return useHostAliases((s) => (key ? s.byHost[key.toLowerCase()] : undefined));
 }
 
-/** Reactive variant: re-renders the caller when the alias set changes. */
-export function useAliasForHost(host: string | null): HostAlias | undefined {
-  return useHostAliases((s) =>
-    host ? s.byHost[host.toLowerCase()] : undefined,
-  );
+export interface AliasMatch {
+  alias: HostAlias;
+  start: number;
+  end: number;
+}
+
+/**
+ * The alias to show for a URL: the saved prefix that appears earliest in the
+ * URL, longest first. Aliases are arbitrary substrings (origin, or origin +
+ * a path chunk), so this compacts "https://api.example.com/v1/…" down to a
+ * single chip.
+ */
+export function matchAlias(
+  url: string,
+  aliases: HostAlias[],
+): AliasMatch | null {
+  const lower = url.toLowerCase();
+  let best: AliasMatch | null = null;
+  for (const a of aliases) {
+    const key = a.host.toLowerCase();
+    if (!key) continue;
+    const idx = lower.indexOf(key);
+    if (idx < 0) continue;
+    const end = idx + key.length;
+    if (!best || idx < best.start || (idx === best.start && end > best.end)) {
+      best = { alias: a, start: idx, end };
+    }
+  }
+  return best;
+}
+
+/** Reactive alias match for a URL. */
+export function useUrlMatch(url: string): AliasMatch | null {
+  const aliases = useHostAliases((s) => s.aliases);
+  return useMemo(() => matchAlias(url, aliases), [url, aliases]);
 }
 
 /**
@@ -72,24 +102,46 @@ export function originOf(url: string): string | null {
   }
 }
 
+/** The character range of a URL's origin, for highlighting/aliasing it. */
+export function originRange(
+  url: string,
+): { start: number; end: number } | null {
+  const o = originOf(url);
+  if (!o) return null;
+  const i = url.toLowerCase().indexOf(o.toLowerCase());
+  if (i < 0) return null;
+  return { start: i, end: i + o.length };
+}
+
+/** Schemes offered at the end of the address-bar suggestions. */
+export const URL_SCHEMES = ["https://", "http://", "wss://", "ws://"];
+
+export interface UrlSuggestion {
+  kind: "alias" | "scheme";
+  /** Text inserted when chosen. */
+  key: string;
+  alias?: HostAlias;
+}
+
 /**
- * Split a URL into the parts around its origin so callers can render the
- * origin distinctly. `host` (the origin) is null when the URL has none yet.
+ * Address-bar autocomplete: saved alias prefixes first (shortest/base first),
+ * then bare schemes — all filtered to those that begin with what's typed.
  */
-export function splitUrl(url: string): {
-  pre: string;
-  host: string | null;
-  post: string;
-} {
-  const origin = originOf(url);
-  if (!origin) return { pre: url, host: null, post: "" };
-  const i = url.toLowerCase().indexOf(origin.toLowerCase());
-  if (i < 0) return { pre: url, host: null, post: "" };
-  return {
-    pre: url.slice(0, i),
-    host: url.slice(i, i + origin.length),
-    post: url.slice(i + origin.length),
-  };
+export function buildUrlSuggestions(
+  value: string,
+  aliases: HostAlias[],
+): UrlSuggestion[] {
+  const v = value.toLowerCase();
+  const out: UrlSuggestion[] = aliases
+    .filter(
+      (a) => a.host.toLowerCase().startsWith(v) && a.host.toLowerCase() !== v,
+    )
+    .sort((a, b) => a.host.length - b.host.length)
+    .map((a) => ({ kind: "alias" as const, key: a.host, alias: a }));
+  for (const s of URL_SCHEMES) {
+    if (s.startsWith(v) && s !== v) out.push({ kind: "scheme", key: s });
+  }
+  return out;
 }
 
 /** Readable text colour (black/white) for a given hex background. */

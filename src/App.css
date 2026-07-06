@@ -1666,6 +1666,19 @@ textarea:focus-visible {
   color: var(--text);
 }
 
+/* Address-bar intellisense: alias chip on the left, inserted text dim right. */
+.url-suggest-chip {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.url-suggest .var-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .alias-swatches {
   display: flex;
   gap: 6px;

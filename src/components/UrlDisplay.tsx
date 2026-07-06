@@ -1,37 +1,45 @@
-import { splitUrl, useAliasForHost } from "../state/hostAliases";
+import { useUrlMatch } from "../state/hostAliases";
 import { HostChip } from "./HostChip";
 
 interface Props {
   url: string;
   /**
-   * How to treat a non-aliased URL: "hide"/"dim" drop the "https://" prefix
-   * for compactness, "show" keeps the full URL. When aliased, the whole
-   * origin (scheme + host) collapses into the chip regardless.
+   * How to treat text before the chip / a non-aliased URL: "hide"/"dim" drop
+   * the "https://" prefix for compactness, "show" keeps it. When an alias
+   * matches, the matched prefix collapses into the chip regardless.
    */
   scheme?: "hide" | "dim" | "show";
   className?: string;
 }
 
+const SCHEME_RE = /^[a-z0-9+.-]+:\/\//i;
+
 /**
- * Renders a URL with its origin (scheme + host) collapsed to a coloured chip
- * when an alias exists. Read-only — used in history, tabs and the (blurred)
- * address bar.
+ * Renders a URL with its matched alias prefix (origin, or origin + a path
+ * chunk) collapsed to a coloured chip. Read-only — used in history, tabs and
+ * the (blurred) address bar.
  */
 export function UrlDisplay({ url, scheme = "dim", className }: Props) {
-  const { host, post } = splitUrl(url);
-  const alias = useAliasForHost(host);
+  const m = useUrlMatch(url);
 
-  if (!host) return <span className={className}>{url || "New request"}</span>;
-
-  if (!alias) {
-    const text =
-      scheme === "show" ? url : host.replace(/^[a-z0-9+.-]+:\/\//i, "") + post;
+  if (!m) {
+    if (!url) return <span className={className}>New request</span>;
+    const text = scheme === "show" ? url : url.replace(SCHEME_RE, "");
     return <span className={className}>{text}</span>;
   }
 
+  const pre = url.slice(0, m.start);
+  const post = url.slice(m.end);
+  const preText = scheme === "hide" ? pre.replace(SCHEME_RE, "") : pre;
+
   return (
     <span className={className}>
-      <HostChip alias={alias.alias} color={alias.color} host={host} />
+      {preText && <span className="url-scheme">{preText}</span>}
+      <HostChip
+        alias={m.alias.alias}
+        color={m.alias.color}
+        host={m.alias.host}
+      />
       {post}
     </span>
   );

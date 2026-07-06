@@ -58,7 +58,7 @@ export function HostsDialog({ onClose }: { onClose: () => void }) {
             <input
               className="alias-name"
               value={newHost}
-              placeholder="api.example.com"
+              placeholder="https://api.example.com/v1"
               spellCheck={false}
               onChange={(e) => setNewHost(e.target.value)}
             />
