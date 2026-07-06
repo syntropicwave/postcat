@@ -195,6 +195,15 @@ pub fn login(password: &str, blob: &AccountBlob) -> Result<(DataKey, String), Cr
     Ok((data_key_from(&data_key)?, b64(&auth)))
 }
 
+/// Derive just the auth verifier from a password and the (server-provided)
+/// salt. Needed for login, where the client must present the verifier to the
+/// server *before* it receives the wrapped key.
+pub fn login_auth_verifier(password: &str, salt_b64: &str) -> Result<String, CryptoError> {
+    let salt = unb64(salt_b64)?;
+    let root = argon2_key(password.as_bytes(), &salt)?;
+    Ok(b64(&subkey(&root, b"postcat-auth-v1")))
+}
+
 /// Recover access with the recovery code (e.g. after forgetting the password).
 pub fn recover(recovery_code: &str, blob: &AccountBlob) -> Result<DataKey, CryptoError> {
     let salt = unb64(&blob.recovery_salt)?;

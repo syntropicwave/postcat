@@ -30,7 +30,7 @@ pub fn list(store: &Store) -> Result<Vec<Collection>, StoreError> {
     store.with_conn(|conn| {
         let mut stmt = conn.prepare_cached(
             "SELECT id, name, description, sort_order FROM collections
-             ORDER BY sort_order, id",
+             WHERE deleted = 0 ORDER BY sort_order, id",
         )?;
         let rows = stmt.query_map([], |row| {
             Ok(Collection {
@@ -47,8 +47,9 @@ pub fn list(store: &Store) -> Result<Vec<Collection>, StoreError> {
 pub fn create(store: &Store, name: &str) -> Result<i64, StoreError> {
     store.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO collections (name, sort_order)
-             VALUES (?1, (SELECT coalesce(max(sort_order), 0) + 1 FROM collections))",
+            "INSERT INTO collections (name, sort_order, uid)
+             VALUES (?1, (SELECT coalesce(max(sort_order), 0) + 1 FROM collections),
+                     lower(hex(randomblob(16))))",
             params![name],
         )?;
         Ok(conn.last_insert_rowid())
@@ -75,8 +76,16 @@ pub fn update(
 
 pub fn delete(store: &Store, id: i64) -> Result<(), StoreError> {
     store.with_conn(|conn| {
-        conn.execute("DELETE FROM collections WHERE id = ?1", params![id])?;
-        // Collection-scoped variables have no FK (owner_id is polymorphic).
+        // Soft-delete: keep a tombstone row so the removal syncs to other
+        // devices; hard-delete the children (they live inside this blob).
+        conn.execute(
+            "UPDATE collections SET deleted = 1, sync_rev = sync_rev + 1 WHERE id = ?1",
+            params![id],
+        )?;
+        conn.execute(
+            "DELETE FROM collection_items WHERE collection_id = ?1",
+            params![id],
+        )?;
         conn.execute(
             "DELETE FROM variables WHERE scope = 'collection' AND owner_id = ?1",
             params![id],
@@ -350,7 +359,8 @@ impl Variable {
 pub fn env_list(store: &Store) -> Result<Vec<Environment>, StoreError> {
     store.with_conn(|conn| {
         let mut stmt = conn.prepare_cached(
-            "SELECT id, name, is_active FROM environments ORDER BY sort_order, id",
+            "SELECT id, name, is_active FROM environments
+             WHERE deleted = 0 ORDER BY sort_order, id",
         )?;
         let rows = stmt.query_map([], |row| {
             Ok(Environment {
@@ -366,8 +376,9 @@ pub fn env_list(store: &Store) -> Result<Vec<Environment>, StoreError> {
 pub fn env_create(store: &Store, name: &str) -> Result<i64, StoreError> {
     store.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO environments (name, sort_order)
-             VALUES (?1, (SELECT coalesce(max(sort_order), 0) + 1 FROM environments))",
+            "INSERT INTO environments (name, sort_order, uid)
+             VALUES (?1, (SELECT coalesce(max(sort_order), 0) + 1 FROM environments),
+                     lower(hex(randomblob(16))))",
             params![name],
         )?;
         Ok(conn.last_insert_rowid())
@@ -386,7 +397,10 @@ pub fn env_rename(store: &Store, id: i64, name: &str) -> Result<(), StoreError> 
 
 pub fn env_delete(store: &Store, id: i64) -> Result<(), StoreError> {
     store.with_conn(|conn| {
-        conn.execute("DELETE FROM environments WHERE id = ?1", params![id])?;
+        conn.execute(
+            "UPDATE environments SET deleted = 1, sync_rev = sync_rev + 1 WHERE id = ?1",
+            params![id],
+        )?;
         conn.execute(
             "DELETE FROM variables WHERE scope = 'environment' AND owner_id = ?1",
             params![id],

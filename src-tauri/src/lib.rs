@@ -9,6 +9,7 @@ pub mod runner;
 pub mod scripting;
 pub mod settings;
 pub mod store;
+pub mod sync;
 pub mod vars;
 pub mod websocket;
 
@@ -711,6 +712,57 @@ fn read_text_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
+/* ---------------- sync ---------------- */
+
+#[tauri::command]
+async fn sync_register(
+    store: tauri::State<'_, Store>,
+    session: tauri::State<'_, sync::SyncSession>,
+    url: String,
+    email: String,
+    password: String,
+) -> Result<String, String> {
+    sync::register(&store, &session, &url, &email, &password)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn sync_login(
+    store: tauri::State<'_, Store>,
+    session: tauri::State<'_, sync::SyncSession>,
+    url: String,
+    email: String,
+    password: String,
+) -> Result<(), String> {
+    sync::login(&store, &session, &url, &email, &password)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn sync_logout(session: tauri::State<'_, sync::SyncSession>) {
+    sync::logout(&session);
+}
+
+#[tauri::command]
+fn sync_status(
+    store: tauri::State<'_, Store>,
+    session: tauri::State<'_, sync::SyncSession>,
+) -> Result<sync::SyncStatus, String> {
+    sync::status(&store, &session).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn sync_now(
+    store: tauri::State<'_, Store>,
+    session: tauri::State<'_, sync::SyncSession>,
+) -> Result<sync::SyncReport, String> {
+    sync::sync_now(&store, &session)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /* ---------------- GraphQL & WebSocket ---------------- */
 
 const INTROSPECTION_QUERY: &str = r#"
@@ -898,6 +950,7 @@ pub fn run() {
             app.manage(InflightRequests::default());
             app.manage(RunnerCancels::default());
             app.manage(websocket::WsSessions::default());
+            app.manage(sync::SyncSession::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -958,7 +1011,12 @@ pub fn run() {
             item_duplicate,
             env_export_file,
             env_duplicate,
-            history_save_body
+            history_save_body,
+            sync_register,
+            sync_login,
+            sync_logout,
+            sync_status,
+            sync_now
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

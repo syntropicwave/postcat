@@ -344,6 +344,51 @@ export function appSettingsSet(settings: AppSettings): Promise<void> {
   return invoke("app_settings_set", { settingsValue: settings });
 }
 
+/* ---------------- sync ---------------- */
+
+export interface SyncStatus {
+  signed_in: boolean;
+  url: string;
+  email: string;
+  last_cursor: number;
+  pending: number;
+}
+
+export interface SyncReport {
+  pushed: number;
+  pulled: number;
+  cursor: number;
+}
+
+/** Returns the one-time recovery code. */
+export function syncRegister(
+  url: string,
+  email: string,
+  password: string,
+): Promise<string> {
+  return invoke<string>("sync_register", { url, email, password });
+}
+
+export function syncLogin(
+  url: string,
+  email: string,
+  password: string,
+): Promise<void> {
+  return invoke("sync_login", { url, email, password });
+}
+
+export function syncLogout(): Promise<void> {
+  return invoke("sync_logout");
+}
+
+export function syncStatus(): Promise<SyncStatus> {
+  return invoke<SyncStatus>("sync_status");
+}
+
+export function syncNow(): Promise<SyncReport> {
+  return invoke<SyncReport>("sync_now");
+}
+
 export function historyGet(id: number): Promise<HistoryDetail> {
   return invoke<HistoryDetail>("history_get", { id });
 }

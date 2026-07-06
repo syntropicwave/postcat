@@ -8,6 +8,7 @@ import { ResponseViewer } from "./components/ResponseViewer";
 import { SaveDialog } from "./components/SaveDialog";
 import { CookieManager } from "./components/CookieManager";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { SyncDialog } from "./components/SyncDialog";
 import { WsPanel } from "./components/WsPanel";
 import { CommandPalette } from "./components/CommandPalette";
 import { DiffView } from "./components/DiffView";
@@ -25,6 +26,7 @@ function App() {
   const [saveFor, setSaveFor] = useState<string | null>(null);
   const [cookiesOpen, setCookiesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [diffPair, setDiffPair] = useState<[number, number] | null>(null);
   const active = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
@@ -112,6 +114,13 @@ function App() {
           <div className="top-actions">
             <button
               className="icon-btn"
+              title="Sync (end-to-end encrypted)"
+              onClick={() => setSyncOpen(true)}
+            >
+              ⟳
+            </button>
+            <button
+              className="icon-btn"
               title="Cookies"
               onClick={() => setCookiesOpen(true)}
             >
@@ -149,6 +158,7 @@ function App() {
       {settingsOpen && (
         <SettingsDialog onClose={() => setSettingsOpen(false)} />
       )}
+      {syncOpen && <SyncDialog onClose={() => setSyncOpen(false)} />}
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
       {diffPair && (
         <DiffView ids={diffPair} onClose={() => setDiffPair(null)} />

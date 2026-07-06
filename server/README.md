@@ -26,24 +26,24 @@ docker run -p 8787:8787 -v postcat-sync-data:/data postcat-sync
 Then in postcat: Settings → Sync → server URL `https://your-host:8787`. Put a
 TLS-terminating reverse proxy in front for production.
 
-| Env var | Default | Meaning |
-|---|---|---|
-| `POSTCAT_SYNC_DB` | `postcat-sync.db` | SQLite database path |
-| `POSTCAT_SYNC_ADDR` | `0.0.0.0:8787` | listen address |
+| Env var             | Default           | Meaning              |
+| ------------------- | ----------------- | -------------------- |
+| `POSTCAT_SYNC_DB`   | `postcat-sync.db` | SQLite database path |
+| `POSTCAT_SYNC_ADDR` | `0.0.0.0:8787`    | listen address       |
 
 ## API
 
 All bodies are JSON. Sync endpoints need `Authorization: Bearer <token>`.
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/health` | liveness |
-| POST | `/v1/register` | `{ email, blob }` — create account (409 if taken) |
-| GET | `/v1/salt?email=` | public password salt (needed to derive keys) |
-| POST | `/v1/login` | `{ email, auth_verifier }` → `{ token, wrapped_by_password }` |
-| GET | `/v1/recover-info?email=` | `{ recovery_salt, wrapped_by_recovery }` |
-| POST | `/v1/push` | `{ blobs: [...] }` — upsert, last-writer-wins on `rev` |
-| GET | `/v1/pull?since=<cursor>` | items changed after the server cursor |
+| Method | Path                      | Purpose                                                       |
+| ------ | ------------------------- | ------------------------------------------------------------- |
+| GET    | `/health`                 | liveness                                                      |
+| POST   | `/v1/register`            | `{ email, blob }` — create account (409 if taken)             |
+| GET    | `/v1/salt?email=`         | public password salt (needed to derive keys)                  |
+| POST   | `/v1/login`               | `{ email, auth_verifier }` → `{ token, wrapped_by_password }` |
+| GET    | `/v1/recover-info?email=` | `{ recovery_salt, wrapped_by_recovery }`                      |
+| POST   | `/v1/push`                | `{ blobs: [...] }` — upsert, last-writer-wins on `rev`        |
+| GET    | `/v1/pull?since=<cursor>` | items changed after the server cursor                         |
 
 `blob` and `blobs[]` carry only opaque `ciphertext` plus routing metadata
 (`kind`, `item_id`, `rev`, `updated_at`, `deleted`). The server assigns a
