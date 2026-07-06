@@ -8,7 +8,10 @@ import { ResponseViewer } from "./components/ResponseViewer";
 import { SaveDialog } from "./components/SaveDialog";
 import { CookieManager } from "./components/CookieManager";
 import { SettingsDialog } from "./components/SettingsDialog";
-import { useTabs } from "./state/tabs";
+import { WsPanel } from "./components/WsPanel";
+import { useTabs, isWsUrl } from "./state/tabs";
+import { listen } from "@tauri-apps/api/event";
+import type { WsEvent } from "./types";
 import "./App.css";
 
 function App() {
@@ -20,6 +23,16 @@ function App() {
   const [cookiesOpen, setCookiesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const active = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
+
+  // Global WebSocket event stream → per-tab message logs.
+  useEffect(() => {
+    const unlisten = listen<WsEvent>("ws:event", (event) => {
+      useTabs.getState().wsApplyEvent(event.payload);
+    });
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -93,11 +106,16 @@ function App() {
         {active && (
           <div className="workspace">
             <RequestEditor tab={active} />
-            <ResponseViewer
-              response={active.response}
-              error={active.responseError}
-              sending={active.sending}
-            />
+            {isWsUrl(active.url) ? (
+              <WsPanel tab={active} />
+            ) : (
+              <ResponseViewer
+                response={active.response}
+                error={active.responseError}
+                sending={active.sending}
+                streamText={active.streamText}
+              />
+            )}
           </div>
         )}
       </main>

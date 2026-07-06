@@ -1727,6 +1727,188 @@ button {
   color: var(--server-error);
 }
 
+/* ---------- GraphQL / WebSocket / streaming ---------- */
+
+.graphql-editor {
+  display: flex;
+  gap: 10px;
+  height: 100%;
+  min-height: 140px;
+}
+
+.graphql-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.graphql-schema {
+  width: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: var(--bg-panel);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.schema-section {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: var(--text-dim);
+  padding: 6px 0 3px;
+}
+
+.schema-field {
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.schema-field:hover {
+  background: var(--bg-hover);
+}
+
+.schema-name {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.schema-args {
+  color: var(--text-dim);
+}
+
+.schema-type {
+  color: var(--redirect);
+}
+
+.settings-popover-wrap {
+  position: relative;
+  display: flex;
+}
+
+.settings-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: 260px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+}
+
+.settings-popover label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-dim);
+}
+
+.settings-popover input[type="number"] {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+}
+
+.stream-live {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.ws-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ws-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ws-msg {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.ws-dir {
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.ws-in .ws-dir {
+  color: var(--ok);
+}
+
+.ws-out .ws-dir {
+  color: var(--accent);
+}
+
+.ws-error .ws-dir,
+.ws-error .ws-text {
+  color: var(--server-error);
+}
+
+.ws-open .ws-text,
+.ws-closed .ws-text {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.ws-text {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.ws-composer {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.ws-composer textarea {
+  flex: 1;
+  height: 54px;
+  resize: vertical;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
 /* ---------- Method colors ---------- */
 
 .method-GET {

@@ -34,6 +34,19 @@ export function specToCurl(spec: RequestSpec): string {
     case "binary":
       parts.push(`--data-binary ${sq(`@${body.path}`)}`);
       break;
+    case "graphql": {
+      let vars: unknown;
+      try {
+        vars = body.variables.trim() ? JSON.parse(body.variables) : {};
+      } catch {
+        vars = {};
+      }
+      parts.push(`-H ${sq("Content-Type: application/json")}`);
+      parts.push(
+        `--data-raw ${sq(JSON.stringify({ query: body.query, variables: vars }))}`,
+      );
+      break;
+    }
   }
 
   const s = spec.settings;

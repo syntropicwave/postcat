@@ -9,6 +9,7 @@ pub mod scripting;
 pub mod settings;
 pub mod store;
 pub mod vars;
+pub mod websocket;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -70,6 +71,7 @@ fn app_info(app: tauri::AppHandle, store: tauri::State<'_, Store>) -> Result<App
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 async fn send_request(
+    app: tauri::AppHandle,
     store: tauri::State<'_, Store>,
     jar: tauri::State<'_, cookies::Cookies>,
     inflight: tauri::State<'_, InflightRequests>,
@@ -170,8 +172,18 @@ async fn send_request(
         map.insert(request_id.clone(), cancel_tx);
     }
 
+    // Live streaming (SSE): forward chunks to the UI as they arrive.
+    let stream_cb: http_engine::StreamChunkFn = {
+        use tauri::Emitter;
+        let app = app.clone();
+        let event = format!("stream:{request_id}");
+        std::sync::Arc::new(move |chunk: &str| {
+            let _ = app.emit(&event, chunk);
+        })
+    };
+
     let outcome = tokio::select! {
-        res = http_engine::execute(jar.store.clone(), &resolved, &app_settings) => Some(res),
+        res = http_engine::execute_streaming(jar.store.clone(), &resolved, &app_settings, Some(stream_cb)) => Some(res),
         _ = cancel_rx => None,
     };
 
@@ -665,6 +677,118 @@ fn read_text_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
+/* ---------------- GraphQL & WebSocket ---------------- */
+
+const INTROSPECTION_QUERY: &str = r#"
+query IntrospectionQuery {
+  __schema {
+    queryType { name }
+    mutationType { name }
+    subscriptionType { name }
+    types {
+      kind name description
+      fields(includeDeprecated: false) {
+        name description
+        args { name description type { ...TypeRef } defaultValue }
+        type { ...TypeRef }
+      }
+      inputFields { name type { ...TypeRef } }
+      enumValues(includeDeprecated: false) { name description }
+    }
+  }
+}
+fragment TypeRef on __Type {
+  kind name
+  ofType { kind name ofType { kind name ofType { kind name } } }
+}
+"#;
+
+/// Fetch the GraphQL schema of an endpoint (vars/auth of the tab apply).
+#[tauri::command]
+async fn graphql_introspect(
+    store: tauri::State<'_, Store>,
+    jar: tauri::State<'_, cookies::Cookies>,
+    url: String,
+    headers: Vec<http_engine::KeyValue>,
+    collection_id: Option<i64>,
+) -> Result<serde_json::Value, String> {
+    let spec = RequestSpec {
+        method: "POST".into(),
+        url,
+        headers,
+        body: http_engine::BodySpec::Graphql {
+            query: INTROSPECTION_QUERY.into(),
+            variables: String::new(),
+        },
+        ..Default::default()
+    };
+    let resolution = vars::resolve(&store, &spec, collection_id).map_err(|e| e.to_string())?;
+    let app_settings = settings::get(&store).map_err(|e| e.to_string())?;
+    let resp = http_engine::execute(jar.store.clone(), &resolution.spec, &app_settings)
+        .await
+        .map_err(|e| e.to_string())?;
+    if resp.status >= 400 {
+        return Err(format!("introspection returned {}", resp.status));
+    }
+    serde_json::from_slice(&resp.body).map_err(|e| format!("bad introspection response: {e}"))
+}
+
+#[tauri::command]
+async fn ws_connect(
+    app: tauri::AppHandle,
+    store: tauri::State<'_, Store>,
+    sessions: tauri::State<'_, websocket::WsSessions>,
+    conn_id: String,
+    url: String,
+    headers: Vec<http_engine::KeyValue>,
+    collection_id: Option<i64>,
+) -> Result<(), String> {
+    use tauri::Emitter;
+    // Resolve {{vars}} in URL and headers before connecting.
+    let spec = RequestSpec {
+        method: "WS".into(),
+        url,
+        headers,
+        ..Default::default()
+    };
+    let resolution = vars::resolve(&store, &spec, collection_id).map_err(|e| e.to_string())?;
+
+    // The session task needs its own DB connection to record history later.
+    let task_store =
+        Store::open(&db_path(&app).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+
+    let emit_app = app.clone();
+    websocket::connect(
+        &sessions,
+        task_store,
+        conn_id,
+        resolution.spec.url,
+        resolution.spec.headers,
+        move |event| {
+            let _ = emit_app.emit("ws:event", &event);
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+fn ws_send(
+    app: tauri::AppHandle,
+    sessions: tauri::State<'_, websocket::WsSessions>,
+    conn_id: String,
+    text: String,
+) -> Result<(), String> {
+    use tauri::Emitter;
+    websocket::send(&sessions, &conn_id, text, |event| {
+        let _ = app.emit("ws:event", &event);
+    })
+}
+
+#[tauri::command]
+fn ws_close(sessions: tauri::State<'_, websocket::WsSessions>, conn_id: String) {
+    websocket::close(&sessions, &conn_id);
+}
+
 #[tauri::command]
 fn runner_cancel(cancels: tauri::State<'_, RunnerCancels>, collection_id: i64) {
     if let Ok(map) = cancels.0.lock() {
@@ -739,6 +863,7 @@ pub fn run() {
             app.manage(cookies::Cookies::load(&cookie_path));
             app.manage(InflightRequests::default());
             app.manage(RunnerCancels::default());
+            app.manage(websocket::WsSessions::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -791,7 +916,11 @@ pub fn run() {
             item_scripts_set,
             run_collection,
             runner_cancel,
-            read_text_file
+            read_text_file,
+            graphql_introspect,
+            ws_connect,
+            ws_send,
+            ws_close
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

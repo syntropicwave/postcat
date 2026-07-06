@@ -15,7 +15,20 @@ export type BodySpec =
   | { kind: "raw"; content_type: string; text: string }
   | { kind: "url_encoded"; fields: KeyValue[] }
   | { kind: "form_data"; fields: FormField[] }
-  | { kind: "binary"; path: string };
+  | { kind: "binary"; path: string }
+  | { kind: "graphql"; query: string; variables: string };
+
+export interface WsEvent {
+  conn_id: string;
+  kind: "open" | "in" | "out" | "closed" | "error";
+  text: string;
+}
+
+export interface WsMessage {
+  kind: "open" | "in" | "out" | "closed" | "error";
+  text: string;
+  ts: number;
+}
 
 export interface SendSettings {
   timeout_ms: number;

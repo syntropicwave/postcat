@@ -61,6 +61,12 @@ pub enum BodySpec {
     Binary {
         path: String,
     },
+    /// GraphQL query + variables (JSON text); sent as application/json.
+    Graphql {
+        query: String,
+        #[serde(default)]
+        variables: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,6 +156,13 @@ impl RequestSpec {
                     .join("\n"),
             ),
             BodySpec::Binary { path } => Some(format!("@{path}")),
+            BodySpec::Graphql { query, variables } => {
+                if variables.trim().is_empty() {
+                    Some(query.clone())
+                } else {
+                    Some(format!("{query}\n{variables}"))
+                }
+            }
         }
     }
 }
@@ -194,6 +207,19 @@ pub async fn execute(
     spec: &RequestSpec,
     app: &AppSettings,
 ) -> Result<HttpResponseData, EngineError> {
+    execute_streaming(jar, spec, app, None).await
+}
+
+/// Callback invoked per body chunk when the response is a live stream
+/// (text/event-stream) — lets the UI show events as they arrive.
+pub type StreamChunkFn = Arc<dyn Fn(&str) + Send + Sync>;
+
+pub async fn execute_streaming(
+    jar: Arc<CookieStoreMutex>,
+    spec: &RequestSpec,
+    app: &AppSettings,
+    on_stream_chunk: Option<StreamChunkFn>,
+) -> Result<HttpResponseData, EngineError> {
     let client = build_client(jar, &spec.settings, app)?;
     let request = build_request(&client, spec)?;
     let max_captured = (app.max_captured_body_kb as usize).max(64) * 1024;
@@ -204,7 +230,7 @@ pub async fn execute(
 
     let status = response.status();
     let http_version = format!("{:?}", response.version());
-    let headers = response
+    let headers: Vec<(String, String)> = response
         .headers()
         .iter()
         .map(|(k, v)| {
@@ -215,6 +241,11 @@ pub async fn execute(
         })
         .collect();
 
+    let is_event_stream = headers
+        .iter()
+        .any(|(k, v)| k.eq_ignore_ascii_case("content-type") && v.starts_with("text/event-stream"));
+    let chunk_cb = on_stream_chunk.filter(|_| is_event_stream);
+
     let mut body: Vec<u8> = Vec::new();
     let mut body_truncated = false;
     let mut size: usize = 0;
@@ -222,6 +253,9 @@ pub async fn execute(
     while let Some(chunk) = stream.next().await {
         let chunk = chunk?;
         size += chunk.len();
+        if let Some(cb) = &chunk_cb {
+            cb(&String::from_utf8_lossy(&chunk));
+        }
         if body.len() < max_captured {
             let take = (max_captured - body.len()).min(chunk.len());
             body.extend_from_slice(&chunk[..take]);
@@ -262,8 +296,11 @@ fn build_client(
     let mut builder = reqwest::Client::builder()
         .cookie_provider(jar)
         .redirect(redirect)
-        .danger_accept_invalid_certs(!settings.verify_ssl)
-        .timeout(std::time::Duration::from_millis(settings.timeout_ms));
+        .danger_accept_invalid_certs(!settings.verify_ssl);
+    // timeout 0 = no timeout (long-lived SSE/streaming connections).
+    if settings.timeout_ms > 0 {
+        builder = builder.timeout(std::time::Duration::from_millis(settings.timeout_ms));
+    }
 
     builder = match app.proxy_mode.as_str() {
         "none" => builder.no_proxy(),
@@ -367,6 +404,15 @@ fn build_request(
                 source,
             })?;
             builder.body(bytes)
+        }
+        BodySpec::Graphql { query, variables } => {
+            let vars: serde_json::Value = serde_json::from_str(variables)
+                .unwrap_or(serde_json::Value::Object(Default::default()));
+            let payload = serde_json::json!({ "query": query, "variables": vars });
+            if !headers.contains_key(CONTENT_TYPE) {
+                builder = builder.header(CONTENT_TYPE, "application/json");
+            }
+            builder.body(payload.to_string())
         }
     };
 

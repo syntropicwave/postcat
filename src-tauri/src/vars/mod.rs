@@ -74,6 +74,10 @@ pub fn resolve_with(spec: &RequestSpec, vars: &[Variable]) -> Resolution {
                 .collect(),
         },
         BodySpec::Binary { path } => BodySpec::Binary { path: path.clone() },
+        BodySpec::Graphql { query, variables } => BodySpec::Graphql {
+            query: sub(query),
+            variables: sub(variables),
+        },
     };
 
     // Keep only secrets that actually appear in the resolved request.
@@ -183,6 +187,10 @@ pub fn mask_secrets(spec: &RequestSpec, secrets: &[(String, String)]) -> Request
                     f
                 })
                 .collect(),
+        },
+        BodySpec::Graphql { query, variables } => BodySpec::Graphql {
+            query: mask(query),
+            variables: mask(variables),
         },
         other => other.clone(),
     };

@@ -12,12 +12,33 @@ interface Props {
   response: SendResult | null;
   error: string | null;
   sending: boolean;
+  streamText?: string;
 }
 
-export function ResponseViewer({ response, error, sending }: Props) {
+export function ResponseViewer({
+  response,
+  error,
+  sending,
+  streamText,
+}: Props) {
   const [view, setView] = useState<View>("pretty");
 
   if (sending) {
+    // Live SSE stream: show events as they arrive.
+    if (streamText) {
+      return (
+        <div className="response-viewer">
+          <div className="response-status">
+            <span className="status-badge status-ok">STREAMING</span>
+            <span className="response-meta">
+              live events — the full body is saved to history when the
+              connection closes
+            </span>
+          </div>
+          <pre className="stream-live">{streamText}</pre>
+        </div>
+      );
+    }
     return <div className="response-viewer empty">Sending…</div>;
   }
   if (error) {

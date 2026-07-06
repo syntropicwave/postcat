@@ -258,6 +258,16 @@ fn parse_body(body: &Value) -> BodySpec {
         Some("file") => BodySpec::Binary {
             path: body.pointer("/file/src").map(as_str).unwrap_or_default(),
         },
+        Some("graphql") => BodySpec::Graphql {
+            query: body
+                .pointer("/graphql/query")
+                .map(as_str)
+                .unwrap_or_default(),
+            variables: body
+                .pointer("/graphql/variables")
+                .map(as_str)
+                .unwrap_or_default(),
+        },
         _ => BodySpec::None,
     }
 }
@@ -387,6 +397,10 @@ fn export_request(spec: &RequestSpec, description: &str) -> Value {
         BodySpec::Binary { path } => json!({
             "mode": "file",
             "file": {"src": path},
+        }),
+        BodySpec::Graphql { query, variables } => json!({
+            "mode": "graphql",
+            "graphql": {"query": query, "variables": variables},
         }),
     };
 

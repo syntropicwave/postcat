@@ -1,5 +1,11 @@
 import { create } from "zustand";
-import { cancelRequest, sendRequest } from "../ipc/commands";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import {
+  cancelRequest,
+  sendRequest,
+  wsClose,
+  wsConnect,
+} from "../ipc/commands";
 import type {
   AuthSpec,
   BodySpec,
@@ -7,6 +13,8 @@ import type {
   RequestSpec,
   SendResult,
   SendSettings,
+  WsEvent,
+  WsMessage,
 } from "../types";
 import { DEFAULT_SETTINGS } from "../types";
 
@@ -26,6 +34,10 @@ export interface Tab {
   sending: boolean;
   response: SendResult | null;
   responseError: string | null;
+  /// Live SSE chunks while the request is streaming.
+  streamText: string;
+  wsStatus: "closed" | "connecting" | "open";
+  wsMessages: WsMessage[];
   /// Set when the tab was opened from a collection: variables resolve in
   /// this collection's scope and Ctrl+S saves back into the item.
   collectionId: number | null;
@@ -50,6 +62,12 @@ interface TabsState {
   setParams: (id: string, params: KeyValue[]) => void;
   send: (id: string) => Promise<void>;
   cancel: (id: string) => void;
+  wsToggle: (id: string) => Promise<void>;
+  wsApplyEvent: (event: WsEvent) => void;
+}
+
+export function isWsUrl(url: string): boolean {
+  return /^wss?:\/\//i.test(url.trim());
 }
 
 let tabCounter = 0;
@@ -70,6 +88,9 @@ function makeTab(partial?: Partial<Tab>): Tab {
     sending: false,
     response: null,
     responseError: null,
+    streamText: "",
+    wsStatus: "closed",
+    wsMessages: [],
     collectionId: null,
     itemId: null,
     itemName: null,
@@ -204,8 +225,23 @@ export const useTabs = create<TabsState>((set, get) => ({
   send: async (id) => {
     const tab = get().tabs.find((t) => t.id === id);
     if (!tab || tab.sending || tab.url.trim() === "") return;
-    get().updateTab(id, { sending: true, responseError: null });
+    if (isWsUrl(tab.url)) {
+      return get().wsToggle(id);
+    }
+    get().updateTab(id, { sending: true, responseError: null, streamText: "" });
+
+    // Live SSE chunks stream in while the request is running.
+    let unlisten: UnlistenFn | null = null;
     try {
+      unlisten = await listen<string>(`stream:${id}`, (event) => {
+        set((s) => ({
+          tabs: s.tabs.map((t) =>
+            t.id === id
+              ? { ...t, streamText: t.streamText + event.payload }
+              : t,
+          ),
+        }));
+      });
       const result = await sendRequest(
         id,
         specFromTab(tab),
@@ -222,12 +258,59 @@ export const useTabs = create<TabsState>((set, get) => ({
         responseError: String(e),
       });
     } finally {
+      unlisten?.();
       set((s) => ({ historyVersion: s.historyVersion + 1 }));
     }
   },
 
   cancel: (id) => {
     void cancelRequest(id);
+  },
+
+  wsToggle: async (id) => {
+    const tab = get().tabs.find((t) => t.id === id);
+    if (!tab) return;
+    if (tab.wsStatus !== "closed") {
+      await wsClose(id);
+      return;
+    }
+    get().updateTab(id, { wsStatus: "connecting", wsMessages: [] });
+    try {
+      await wsConnect(id, tab.url.trim(), tab.headers, tab.collectionId);
+    } catch (e) {
+      get().updateTab(id, {
+        wsStatus: "closed",
+        wsMessages: [
+          ...(get().tabs.find((t) => t.id === id)?.wsMessages ?? []),
+          { kind: "error", text: String(e), ts: Date.now() },
+        ],
+      });
+    }
+  },
+
+  wsApplyEvent: (event) => {
+    set((s) => ({
+      tabs: s.tabs.map((t) => {
+        if (t.id !== event.conn_id) return t;
+        const message: WsMessage = {
+          kind: event.kind,
+          text: event.text,
+          ts: Date.now(),
+        };
+        return {
+          ...t,
+          wsStatus:
+            event.kind === "open"
+              ? "open"
+              : event.kind === "closed"
+                ? "closed"
+                : t.wsStatus,
+          wsMessages: [...t.wsMessages, message],
+        };
+      }),
+      historyVersion:
+        event.kind === "closed" ? s.historyVersion + 1 : s.historyVersion,
+    }));
   },
 }));
 

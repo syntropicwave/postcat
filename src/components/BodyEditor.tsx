@@ -4,11 +4,16 @@ import { xml } from "@codemirror/lang-xml";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { BodySpec, FormField, KeyValue } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
+import { GraphQLEditor } from "./GraphQLEditor";
 import { usePrefersDark } from "../hooks/usePrefersDark";
 
 interface Props {
   body: BodySpec;
   onChange: (body: BodySpec) => void;
+  /** Context for GraphQL introspection. */
+  url: string;
+  headers: KeyValue[];
+  collectionId: number | null;
 }
 
 const RAW_TYPES: { label: string; contentType: string }[] = [
@@ -18,7 +23,13 @@ const RAW_TYPES: { label: string; contentType: string }[] = [
   { label: "HTML", contentType: "text/html" },
 ];
 
-export function BodyEditor({ body, onChange }: Props) {
+export function BodyEditor({
+  body,
+  onChange,
+  url,
+  headers,
+  collectionId,
+}: Props) {
   const dark = usePrefersDark();
   const setKind = (kind: string) => {
     switch (kind) {
@@ -36,6 +47,9 @@ export function BodyEditor({ body, onChange }: Props) {
         break;
       case "binary":
         onChange({ kind: "binary", path: "" });
+        break;
+      case "graphql":
+        onChange({ kind: "graphql", query: "", variables: "" });
         break;
     }
   };
@@ -61,6 +75,7 @@ export function BodyEditor({ body, onChange }: Props) {
           <option value="url_encoded">x-www-form-urlencoded</option>
           <option value="form_data">form-data</option>
           <option value="binary">binary</option>
+          <option value="graphql">GraphQL</option>
         </select>
 
         {body.kind === "raw" && (
@@ -113,6 +128,19 @@ export function BodyEditor({ body, onChange }: Props) {
         <FormDataEditor
           fields={body.fields}
           onChange={(fields) => onChange({ ...body, fields })}
+        />
+      )}
+
+      {body.kind === "graphql" && (
+        <GraphQLEditor
+          query={body.query}
+          variables={body.variables}
+          url={url}
+          headers={headers}
+          collectionId={collectionId}
+          onChange={(query, variables) =>
+            onChange({ kind: "graphql", query, variables })
+          }
         />
       )}
 

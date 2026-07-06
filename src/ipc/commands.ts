@@ -10,6 +10,7 @@ import type {
   HistoryDetail,
   HistorySummary,
   ImportResult,
+  KeyValue,
   OAuth2Config,
   RequestSpec,
   RetentionSettings,
@@ -290,6 +291,33 @@ export function runCollection(options: RunOptions): Promise<RunReport> {
 
 export function runnerCancel(collectionId: number): Promise<void> {
   return invoke("runner_cancel", { collectionId });
+}
+
+/* ---------------- GraphQL & WebSocket ---------------- */
+
+export function graphqlIntrospect(
+  url: string,
+  headers: KeyValue[],
+  collectionId?: number | null,
+): Promise<unknown> {
+  return invoke("graphql_introspect", { url, headers, collectionId });
+}
+
+export function wsConnect(
+  connId: string,
+  url: string,
+  headers: KeyValue[],
+  collectionId?: number | null,
+): Promise<void> {
+  return invoke("ws_connect", { connId, url, headers, collectionId });
+}
+
+export function wsSend(connId: string, text: string): Promise<void> {
+  return invoke("ws_send", { connId, text });
+}
+
+export function wsClose(connId: string): Promise<void> {
+  return invoke("ws_close", { connId });
 }
 
 export function appSettingsGet(): Promise<AppSettings> {

@@ -33,6 +33,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 reqwest = { version = "0.12", features = ["cookies", "gzip", "brotli", "deflate", "multipart", "stream", "json", "native-tls", "blocking"] }
 rquickjs = "0.6"
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 tokio = { version = "1", features = ["sync", "time", "macros", "rt-multi-thread"] }
 futures-util = "0.3"
 url = "2"

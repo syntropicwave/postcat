@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Tab } from "../state/tabs";
-import { useTabs, parseParams, specFromTab } from "../state/tabs";
+import { useTabs, parseParams, specFromTab, isWsUrl } from "../state/tabs";
 import { itemScriptsSet, itemUpdate } from "../ipc/commands";
 import { ScriptsEditor } from "./ScriptsEditor";
 import { HTTP_METHODS } from "../types";
@@ -23,6 +23,62 @@ export async function saveBoundTab(tab: Tab): Promise<boolean> {
   useTabs.getState().updateTab(tab.id, { dirty: false });
   useTabs.getState().bumpCollections();
   return true;
+}
+
+/** Per-request send settings (timeout, redirects, SSL). */
+function SettingsPopover({ tab }: { tab: Tab }) {
+  const { updateTab } = useTabs();
+  const [open, setOpen] = useState(false);
+  const s = tab.settings;
+  const patch = (p: Partial<typeof s>) =>
+    updateTab(tab.id, { settings: { ...s, ...p }, dirty: true });
+
+  return (
+    <div className="settings-popover-wrap">
+      <button
+        type="button"
+        className={`icon-btn${open ? " active" : ""}`}
+        title="Request settings (timeout, redirects, SSL)"
+        onClick={() => setOpen((v) => !v)}
+      >
+        ⏱
+      </button>
+      {open && (
+        <div className="settings-popover">
+          <label>
+            Timeout (ms, 0 = none — needed for SSE)
+            <input
+              type="number"
+              min={0}
+              value={s.timeout_ms}
+              onChange={(e) =>
+                patch({ timeout_ms: Math.max(0, Number(e.target.value)) })
+              }
+            />
+          </label>
+          <label className="auth-check">
+            <input
+              type="checkbox"
+              checked={s.follow_redirects}
+              onChange={(e) => patch({ follow_redirects: e.target.checked })}
+            />
+            follow redirects (max {s.max_redirects})
+          </label>
+          <label className="auth-check">
+            <input
+              type="checkbox"
+              checked={s.verify_ssl}
+              onChange={(e) => patch({ verify_ssl: e.target.checked })}
+            />
+            verify SSL certificates
+          </label>
+          <button className="filter-reset" onClick={() => setOpen(false)}>
+            close
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 const COMMON_HEADERS = [
@@ -96,7 +152,19 @@ export function RequestEditor({ tab }: { tab: Tab }) {
             })
           }
         />
-        {tab.sending ? (
+        {isWsUrl(tab.url) ? (
+          <button
+            type="submit"
+            className={`send-btn${tab.wsStatus !== "closed" ? " cancel" : ""}`}
+            disabled={!tab.url.trim()}
+          >
+            {tab.wsStatus === "closed"
+              ? "Connect"
+              : tab.wsStatus === "connecting"
+                ? "…"
+                : "Disconnect"}
+          </button>
+        ) : tab.sending ? (
           <button
             type="button"
             className="send-btn cancel"
@@ -109,6 +177,7 @@ export function RequestEditor({ tab }: { tab: Tab }) {
             Send
           </button>
         )}
+        <SettingsPopover tab={tab} />
         <button
           type="button"
           className="save-btn"
@@ -193,6 +262,9 @@ export function RequestEditor({ tab }: { tab: Tab }) {
         {section === "body" && (
           <BodyEditor
             body={tab.body}
+            url={tab.url}
+            headers={tab.headers}
+            collectionId={tab.collectionId}
             onChange={(body) => updateTab(tab.id, { body, dirty: true })}
           />
         )}

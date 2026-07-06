@@ -72,6 +72,19 @@ function bodyInfo(spec: RequestSpec): BodyInfo {
         contentType: "application/octet-stream",
         note: `binary body from file: ${b.path}`,
       };
+    case "graphql": {
+      let vars: unknown;
+      try {
+        vars = b.variables.trim() ? JSON.parse(b.variables) : {};
+      } catch {
+        vars = {};
+      }
+      return {
+        text: JSON.stringify({ query: b.query, variables: vars }),
+        contentType: "application/json",
+        note: null,
+      };
+    }
   }
 }
 
