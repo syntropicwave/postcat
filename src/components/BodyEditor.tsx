@@ -4,6 +4,7 @@ import { xml } from "@codemirror/lang-xml";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { BodySpec, FormField, KeyValue } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
+import { usePrefersDark } from "../hooks/usePrefersDark";
 
 interface Props {
   body: BodySpec;
@@ -18,6 +19,7 @@ const RAW_TYPES: { label: string; contentType: string }[] = [
 ];
 
 export function BodyEditor({ body, onChange }: Props) {
+  const dark = usePrefersDark();
   const setKind = (kind: string) => {
     switch (kind) {
       case "none":
@@ -86,6 +88,7 @@ export function BodyEditor({ body, onChange }: Props) {
         <CodeMirror
           value={body.text}
           height="100%"
+          theme={dark ? "dark" : "light"}
           className="body-code"
           extensions={
             body.content_type === "application/json"

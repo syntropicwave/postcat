@@ -4,6 +4,7 @@ import { json } from "@codemirror/lang-json";
 import { html } from "@codemirror/lang-html";
 import { xml } from "@codemirror/lang-xml";
 import type { SendResult } from "../types";
+import { usePrefersDark } from "../hooks/usePrefersDark";
 
 type View = "pretty" | "raw" | "preview" | "headers";
 
@@ -73,6 +74,7 @@ function ResponseBody({
   response: SendResult;
   view: View;
 }) {
+  const dark = usePrefersDark();
   const contentType =
     response.headers.find(([k]) => k.toLowerCase() === "content-type")?.[1] ??
     "";
@@ -159,6 +161,7 @@ function ResponseBody({
       value={view === "pretty" ? prettyText : (response.body_text ?? "")}
       readOnly
       height="100%"
+      theme={dark ? "dark" : "light"}
       extensions={extensions}
     />
   );
