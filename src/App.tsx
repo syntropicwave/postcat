@@ -20,6 +20,7 @@ import { useAppSettings } from "./state/appSettings";
 import { useHostAliases } from "./state/hostAliases";
 import { useTabs, isWsUrl } from "./state/tabs";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { historySearch } from "./ipc/commands";
 import type { WsEvent } from "./types";
 import "./App.css";
@@ -72,6 +73,16 @@ function App() {
     void loadSettings();
     void loadHostAliases();
   }, [loadSettings, loadHostAliases]);
+
+  // Mirror the active request's address into the OS window title (taskbar,
+  // alt-tab), the way Postman does.
+  useEffect(() => {
+    const addr = active?.url.trim();
+    const title = addr
+      ? `${active.method} ${addr}`
+      : active?.itemName || "postcat";
+    void getCurrentWindow().setTitle(title);
+  }, [active?.method, active?.url, active?.itemName]);
 
   // "Diff vs previous": find the prior response for this endpoint.
   const diffPrevious = active?.response

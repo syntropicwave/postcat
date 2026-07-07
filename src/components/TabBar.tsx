@@ -32,6 +32,7 @@ interface Group {
 // it never redraws the tabs' own separators.
 interface Peek {
   id: string;
+  method: string;
   title: ReactNode;
   dirty: string;
   left: number;
@@ -182,6 +183,7 @@ export function TabBar() {
     const aliasColor = !grouped && m ? m.alias.color || "var(--accent)" : null;
     setPeek({
       id: tab.id,
+      method: tab.method,
       title: tabTitle(tab, m, grouped),
       dirty: tab.dirty && tab.itemId ? " •" : "",
       left: r.left,
@@ -347,24 +349,29 @@ export function TabBar() {
               boxShadow: peek.boxShadow,
             }}
           >
-            {/* The overlay body is click-through (navigation passes to the tabs
-                underneath); only this × is interactive, so it highlights and
-                closes directly. The hover-bridge keeps the overlay alive while
-                the pointer is on it. */}
-            <button
-              className="tab-peek-x"
-              title="Close tab"
-              onMouseEnter={cancelClear}
-              onMouseLeave={scheduleClear}
-              onClick={(e) => {
-                e.stopPropagation();
-                cancelClear();
-                closeTab(peek.id);
-                setPeek(null);
-              }}
-            >
-              <Icon name="x" size={20} />
-            </button>
+            {/* Mirror the tab's lead exactly (method badge reserves the width,
+                × sits over it) so the title lands in the same place and doesn't
+                jump when the overlay appears. The overlay body is click-through;
+                only this × is interactive (highlights + closes). */}
+            <span className="tab-lead">
+              <span className={`tab-method method-${peek.method}`}>
+                {peek.method}
+              </span>
+              <button
+                className="tab-x"
+                title="Close tab"
+                onMouseEnter={cancelClear}
+                onMouseLeave={scheduleClear}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelClear();
+                  closeTab(peek.id);
+                  setPeek(null);
+                }}
+              >
+                <Icon name="x" size={20} />
+              </button>
+            </span>
             <span className="tab-peek-title">
               {peek.title}
               {peek.dirty}

@@ -524,24 +524,19 @@ textarea:focus-visible {
   color: var(--server-error);
 }
 
-/* The overlay's × — the only interactive part of the (click-through) overlay,
-   so it highlights on hover and closes directly. */
-.tab-peek-x {
-  pointer-events: auto;
-  align-self: stretch;
+/* In the overlay the lead mirrors a hovered tab: method hidden (reserving its
+   width), × shown and interactive — the only interactive part of the otherwise
+   click-through overlay. */
+.tab-peek .tab-method {
+  visibility: hidden;
+}
+
+.tab-peek .tab-x {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 3px;
-  color: var(--text-dim);
+  pointer-events: auto;
 }
 
-.tab-peek-x:hover {
-  color: var(--server-error);
-}
-
-.tab-x svg,
-.tab-peek-x svg {
+.tab-x svg {
   display: block;
 }
 
