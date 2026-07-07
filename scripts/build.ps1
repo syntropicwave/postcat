@@ -1,24 +1,28 @@
 <#
 .SYNOPSIS
-  Background release builder for postcat.
+  Background release builder + auto-deploy for postcat.
 
 .DESCRIPTION
-  Runs `npm run tauri build` detached so you don't wait on it. Manage it with:
+  You RUN the app from   app\postcat.exe   (the deploy target).
+  The build always compiles to target\release (a different file), so it never
+  clashes with the running app. After a successful build the fresh exe is
+  copied into app\postcat.exe — immediately if the app is closed, or the moment
+  you close it if it's still open ("deploy on close").
 
-    ./scripts/build.ps1 start            # full build (exe + installers)
-    ./scripts/build.ps1 start -NoBundle  # exe only (skips MSI/NSIS, ~30s faster)
-    ./scripts/build.ps1 status           # running? elapsed? finished? artifacts
-    ./scripts/build.ps1 log -Tail 40     # tail the build log
-    ./scripts/build.ps1 stop             # kill the running build (whole tree)
-    ./scripts/build.ps1 restart          # stop + start
+    ./scripts/build.ps1 start            # build (exe + installers) → deploy on close
+    ./scripts/build.ps1 start -NoBundle  # exe only (skips MSI/NSIS)
+    ./scripts/build.ps1 status           # build phase + deploy state + versions
+    ./scripts/build.ps1 log  -Tail 40    # tail the build log
+    ./scripts/build.ps1 deploy           # force the swap now (waits if app is open)
+    ./scripts/build.ps1 run              # launch app\postcat.exe
+    ./scripts/build.ps1 stop | restart
 
-  State lives in .build/ (git-ignored): build.pid and build.log.
+  State lives in .build\ (git-ignored). The deployed app lives in app\.
 #>
 param(
   [Parameter(Position = 0)]
-  [ValidateSet("start", "stop", "status", "restart", "log")]
+  [ValidateSet("start", "stop", "status", "restart", "log", "deploy", "run")]
   [string]$Command = "status",
-
   [switch]$NoBundle,
   [int]$Tail = 30
 )
@@ -30,109 +34,134 @@ $pidFile = Join-Path $stateDir "build.pid"
 $logFile = Join-Path $stateDir "build.log"
 $runFile = Join-Path $stateDir "run.ps1"
 $exePath = Join-Path $repo "src-tauri\target\release\postcat.exe"
+$appDir = Join-Path $repo "app"
+$deployExe = Join-Path $appDir "postcat.exe"
 New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
+
+function Is-Locked([string]$p) {
+  if (-not (Test-Path $p)) { return $false }
+  try { $f = [System.IO.File]::Open($p, 'Open', 'ReadWrite', 'None'); $f.Close(); return $false }
+  catch { return $true }
+}
 
 function Get-RunningPid {
   if (-not (Test-Path $pidFile)) { return $null }
-  $p = (Get-Content $pidFile -ErrorAction SilentlyContinue | Select-Object -First 1)
+  $p = Get-Content $pidFile -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $p) { return $null }
-  $proc = Get-Process -Id ([int]$p) -ErrorAction SilentlyContinue
-  if ($proc) { return [int]$p } else { return $null }
+  if (Get-Process -Id ([int]$p) -ErrorAction SilentlyContinue) { return [int]$p } else { return $null }
 }
 
-function Show-Tail([int]$n) {
-  if (Test-Path $logFile) { Get-Content $logFile -Tail $n }
-  else { "(no log yet)" }
+# Parse the current build cycle from the log: building | deploying | deployed | failed | interrupted | idle
+function Get-Phase {
+  $running = [bool](Get-RunningPid)
+  if (-not (Test-Path $logFile)) { return "idle" }
+  $txt = Get-Content $logFile -Raw
+  $hasDone = $txt -match "__BUILD_DONE__ (\d+)"
+  $code = if ($hasDone) { [int]$Matches[1] } else { -1 }
+  $hasDeploy = $txt -match "__DEPLOY_DONE__"
+  if ($running) { if (-not $hasDone) { return "building" } else { return "deploying" } }
+  if ($hasDeploy) { return "deployed" }
+  if ($hasDone) { if ($code -eq 0) { return "built" } else { return "failed" } }
+  return "interrupted"
+}
+
+function Show-Tail([int]$n) { if (Test-Path $logFile) { Get-Content $logFile -Tail $n } else { "(no log yet)" } }
+
+function Show-Artifacts {
+  if (Test-Path $deployExe) {
+    $i = Get-Item $deployExe
+    Write-Host ("  running copy: {0} ({1:n1} MB, {2})" -f $deployExe, ($i.Length / 1MB), $i.LastWriteTime)
+  }
+  if (Test-Path $exePath) {
+    $i = Get-Item $exePath
+    Write-Host ("  fresh build:  {0} ({1:n1} MB, {2})" -f $exePath, ($i.Length / 1MB), $i.LastWriteTime)
+  }
+  Get-ChildItem (Join-Path $repo "src-tauri\target\release\bundle") -Recurse -Include *.exe, *.msi -ErrorAction SilentlyContinue |
+    ForEach-Object { Write-Host ("  installer:    {0} ({1:n1} MB)" -f $_.FullName, ($_.Length / 1MB)) }
 }
 
 function Do-Status {
-  $running = Get-RunningPid
-  if ($running) {
-    $started = $null
-    if (Test-Path $logFile) {
-      $line = Select-String -Path $logFile -Pattern "__BUILD_START__ (.+)$" | Select-Object -First 1
-      if ($line) { $started = [datetime]::Parse($line.Matches[0].Groups[1].Value) }
+  switch (Get-Phase) {
+    "building" { Write-Host "STATUS: building…" -ForegroundColor Yellow; Write-Host "--- last $Tail log lines ---"; Show-Tail $Tail }
+    "deploying" {
+      $waiting = (Get-Content $logFile -Raw) -match "__DEPLOY_WAIT__"
+      if ($waiting) { Write-Host "STATUS: built OK — waiting for app\postcat.exe to close, then it swaps in the new build." -ForegroundColor Cyan }
+      else { Write-Host "STATUS: built OK — deploying…" -ForegroundColor Cyan }
+      Show-Artifacts
     }
-    $elapsed = if ($started) { "{0:n0}s" -f ((Get-Date) - $started).TotalSeconds } else { "?" }
-    Write-Host "STATUS: running (pid $running, elapsed $elapsed)" -ForegroundColor Yellow
-    Write-Host "--- last $Tail log lines ---"
-    Show-Tail $Tail
-    return
-  }
-  # Not running — did the last build finish?
-  $done = if (Test-Path $logFile) { Select-String -Path $logFile -Pattern "__BUILD_DONE__ (\d+) (.+)$" | Select-Object -Last 1 } else { $null }
-  if ($done) {
-    $code = [int]$done.Matches[0].Groups[1].Value
-    $when = $done.Matches[0].Groups[2].Value
-    if ($code -eq 0) {
-      Write-Host "STATUS: finished OK ($when)" -ForegroundColor Green
-      if (Test-Path $exePath) {
-        $mb = "{0:n1}" -f ((Get-Item $exePath).Length / 1MB)
-        Write-Host "  exe: $exePath ($mb MB)"
-      }
-      Get-ChildItem (Join-Path $repo "src-tauri\target\release\bundle") -Recurse -Include *.exe, *.msi -ErrorAction SilentlyContinue |
-        ForEach-Object { Write-Host ("  {0} ({1:n1} MB)" -f $_.FullName, ($_.Length / 1MB)) }
-    }
-    else {
-      Write-Host "STATUS: FAILED (exit $code, $when)" -ForegroundColor Red
-      Write-Host "--- last $Tail log lines ---"
-      Show-Tail $Tail
-    }
-  }
-  elseif (Test-Path $logFile) {
-    Write-Host "STATUS: stopped (interrupted before finishing)" -ForegroundColor Gray
-  }
-  else {
-    Write-Host "STATUS: idle (no build has run)" -ForegroundColor Gray
+    "deployed" { Write-Host "STATUS: deployed ✓" -ForegroundColor Green; Show-Artifacts }
+    "built" { Write-Host "STATUS: built OK (not deployed)" -ForegroundColor Green; Show-Artifacts }
+    "failed" { Write-Host "STATUS: FAILED" -ForegroundColor Red; Write-Host "--- last $Tail log lines ---"; Show-Tail $Tail }
+    "interrupted" { Write-Host "STATUS: stopped (interrupted)" -ForegroundColor Gray }
+    default { Write-Host "STATUS: idle (no build has run)" -ForegroundColor Gray }
   }
 }
 
-function Do-Stop {
+function Do-Stop([switch]$Quiet) {
   $running = Get-RunningPid
-  if (-not $running) { Write-Host "Not running." -ForegroundColor Gray; return }
-  # /T kills the whole tree (cargo, rustc, link.exe, cargo-tauri).
-  & taskkill /PID $running /T /F | Out-Null
+  if (-not $running) { if (-not $Quiet) { Write-Host "Not running." -ForegroundColor Gray }; return }
+  & taskkill /PID $running /T /F 2>&1 | Out-Null
   Remove-Item $pidFile -ErrorAction SilentlyContinue
-  Write-Host "Stopped build (pid $running)." -ForegroundColor Yellow
+  if (-not $Quiet) { Write-Host "Stopped (pid $running)." -ForegroundColor Yellow }
 }
+
+$runnerBody = @'
+param([string]$Repo,[string]$Log,[string]$AppDir,[string]$DeployExe,[string]$ExePath,[switch]$NoBundle)
+$env:Path = "C:\Program Files\Git\usr\bin;$env:USERPROFILE\.cargo\bin;$env:Path"
+Set-Location $Repo
+function Locked($p){ if(-not(Test-Path $p)){return $false}; try{$f=[System.IO.File]::Open($p,'Open','ReadWrite','None');$f.Close();$false}catch{$true} }
+("__BUILD_START__ " + (Get-Date -Format o)) | Out-File -FilePath $Log -Encoding utf8
+if ($NoBundle) { npm run tauri build -- --no-bundle *>> $Log } else { npm run tauri build *>> $Log }
+$code = $LASTEXITCODE
+("__BUILD_DONE__ " + $code + " " + (Get-Date -Format o)) | Out-File -Append $Log
+if ($code -eq 0) {
+  ("__DEPLOY_START__ " + (Get-Date -Format o)) | Out-File -Append $Log
+  New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
+  $warned = $false
+  while (Locked $DeployExe) {
+    if (-not $warned) { ("__DEPLOY_WAIT__ " + (Get-Date -Format o)) | Out-File -Append $Log; $warned = $true }
+    Start-Sleep -Seconds 2
+  }
+  Copy-Item $ExePath $DeployExe -Force
+  ("__DEPLOY_DONE__ " + $DeployExe + " " + (Get-Date -Format o)) | Out-File -Append $Log
+}
+'@
 
 function Do-Start {
-  $running = Get-RunningPid
-  if ($running) { Write-Host "Already running (pid $running). Use 'restart' to rebuild." -ForegroundColor Yellow; return }
+  if ((Get-Phase) -eq "building") { Write-Host "A build is already compiling. Use 'restart'." -ForegroundColor Yellow; return }
+  Do-Stop -Quiet   # clear any finished/waiting runner
 
-  # A running postcat locks target/release/postcat.exe → the build can't
-  # overwrite it (os error 5) or bundle it (os error 32). Warn early.
-  $instances = Get-Process postcat -ErrorAction SilentlyContinue
-  if ($instances) {
-    Write-Host ("WARNING: {0} postcat instance(s) running (pid {1}) — they lock the release exe and the build WILL fail. Close them first." -f `
-        $instances.Count, (($instances | Select-Object -ExpandProperty Id) -join ", ")) -ForegroundColor Red
+  if (Is-Locked $exePath) {
+    Write-Host "WARNING: target\release\postcat.exe is locked (something is running it directly)." -ForegroundColor Red
+    Write-Host "Run the app from  app\postcat.exe  instead so builds don't clash, then retry." -ForegroundColor Red
     return
   }
 
-  $buildArgs = if ($NoBundle) { "-- --no-bundle" } else { "" }
-
-  # Inner runner: set PATH (GNU patch + cargo), run the build, bracket the log
-  # with markers so `status` can report start time and exit code.
-  $runner = @"
-`$env:Path = "C:\Program Files\Git\usr\bin;`$env:USERPROFILE\.cargo\bin;`$env:Path"
-Set-Location "$repo"
-"__BUILD_START__ `$(Get-Date -Format o)" | Out-File -FilePath "$logFile" -Encoding utf8
-try {
-  npm run tauri build $buildArgs *>> "$logFile"
-  `$code = `$LASTEXITCODE
-} catch {
-  `$_ | Out-File -Append "$logFile"; `$code = 1
-}
-"__BUILD_DONE__ `$code `$(Get-Date -Format o)" | Out-File -Append "$logFile"
-"@
-  Set-Content -Path $runFile -Value $runner -Encoding utf8
-
-  $proc = Start-Process pwsh -ArgumentList "-NoProfile", "-File", $runFile `
-    -WindowStyle Hidden -PassThru
+  Set-Content -Path $runFile -Value $runnerBody -Encoding utf8
+  $a = @("-NoProfile", "-File", $runFile, "-Repo", $repo, "-Log", $logFile,
+    "-AppDir", $appDir, "-DeployExe", $deployExe, "-ExePath", $exePath)
+  if ($NoBundle) { $a += "-NoBundle" }
+  $proc = Start-Process pwsh -ArgumentList $a -WindowStyle Hidden -PassThru
   $proc.Id | Set-Content $pidFile
   $mode = if ($NoBundle) { "exe only" } else { "exe + installers" }
-  Write-Host "Started build ($mode) in background (pid $($proc.Id))." -ForegroundColor Green
+  Write-Host "Building ($mode) in background (pid $($proc.Id)); will deploy to app\postcat.exe on close." -ForegroundColor Green
   Write-Host "Check with: ./scripts/build.ps1 status"
+}
+
+# Force the copy now (waits if the app is open).
+function Do-Deploy {
+  if (-not (Test-Path $exePath)) { Write-Host "No build to deploy — run 'start' first." -ForegroundColor Yellow; return }
+  New-Item -ItemType Directory -Force -Path $appDir | Out-Null
+  if (Is-Locked $deployExe) { Write-Host "app\postcat.exe is running — close it; it will be replaced." -ForegroundColor Cyan }
+  while (Is-Locked $deployExe) { Start-Sleep -Seconds 1 }
+  Copy-Item $exePath $deployExe -Force
+  Write-Host "Deployed → $deployExe" -ForegroundColor Green
+}
+
+function Do-Run {
+  if (-not (Test-Path $deployExe)) { Write-Host "app\postcat.exe not built yet — run 'start' first." -ForegroundColor Yellow; return }
+  Start-Process $deployExe
+  Write-Host "Launched $deployExe"
 }
 
 switch ($Command) {
@@ -141,4 +170,6 @@ switch ($Command) {
   "restart" { Do-Stop; Start-Sleep -Milliseconds 500; Do-Start }
   "status" { Do-Status }
   "log" { Show-Tail $Tail }
+  "deploy" { Do-Deploy }
+  "run" { Do-Run }
 }

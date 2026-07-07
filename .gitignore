@@ -25,3 +25,6 @@ dist-ssr
 
 # background build runner state
 .build/
+
+# deployed local app copy (build.ps1)
+/app/
