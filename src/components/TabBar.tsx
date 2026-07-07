@@ -67,10 +67,9 @@ function tabDeco(
   const shadows: string[] = [];
   if (topColor) shadows.push(`inset 0 2px 0 ${topColor}`);
   if (active) shadows.push("inset 0 -2px 0 var(--accent)");
-  // Just a right edge to cap the overlay — no drop shadow. Top/bottom align
-  // with the bar and the left edge sits on the real tab separator.
-  shadows.push("inset -1px 0 0 var(--border)");
-  return { background, boxShadow: shadows.join(", ") };
+  // The right edge is a real border-right on .tab-peek; here we only carry the
+  // decoration bars (group top bar / active underline).
+  return { background, boxShadow: shadows.join(", ") || "none" };
 }
 
 export function TabBar() {

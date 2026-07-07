@@ -490,6 +490,7 @@ textarea:focus-visible {
   align-items: center;
   gap: 6px;
   padding: 0 10px;
+  border-right: 1px solid var(--border);
   z-index: 150;
   white-space: nowrap;
   pointer-events: none;
@@ -1237,15 +1238,30 @@ textarea:focus-visible {
    the start of each status (and each time) sits under the one above it. */
 .history-item-main {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 32px 52px;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
 }
 
-.history-item-main .hist-status,
-.history-item-main .hist-time {
-  text-align: left;
+/* Right cell: status + time by default, save/delete controls on hover. Fixed
+   min-width so the URL column doesn't shift between the two states. */
+.hist-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 80px;
+  height: 20px;
+}
+
+.hist-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-item:hover .hist-meta {
+  display: none;
 }
 
 .hist-label {
@@ -1269,64 +1285,42 @@ textarea:focus-visible {
   padding: 0 1px;
 }
 
-.hist-actions {
+/* Save / delete controls that replace status+time on hover. */
+.hist-controls {
   display: none;
+  align-items: center;
   gap: 2px;
-  padding: 1px 0 2px 44px;
 }
 
-.history-item:hover .hist-actions {
+.history-item:hover .hist-controls {
   display: flex;
 }
 
-.hist-actions button {
+.hist-controls button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--text-dim);
-  font-size: 11px;
   height: 22px;
   min-width: 22px;
-  padding: 0 4px;
   border-radius: 5px;
 }
 
-.hist-actions button svg {
-  width: 14px;
-  height: 14px;
+.hist-controls button svg {
+  display: block;
 }
 
-.hist-actions button:hover {
+.hist-controls button:hover {
   background: var(--bg-hover);
   color: var(--text);
 }
 
-.hist-actions button.pinned {
+.hist-controls button.pinned {
   color: var(--redirect);
 }
 
-.hist-curl {
-  font-family: var(--mono);
-  font-size: 10px !important;
-}
-
-.label-editor {
-  display: flex;
-  gap: 4px;
-  padding: 2px 0 2px 44px;
-}
-
-.label-editor input {
-  flex: 1;
-  padding: 2px 6px;
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  background: var(--bg);
-  font-size: 12px;
-}
-
-.label-editor button {
-  color: var(--accent);
+.hist-controls button:last-child:hover {
+  color: var(--server-error);
 }
 
 .endpoint-item {

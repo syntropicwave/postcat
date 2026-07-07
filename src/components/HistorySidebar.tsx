@@ -6,14 +6,11 @@ import {
   historyEndpoints,
   historyGet,
   historySearch,
-  historySetLabel,
   historySetPinned,
 } from "../ipc/commands";
 import { useTabs, parseParams } from "../state/tabs";
 import type { EndpointGroup, HistorySummary, SearchFilters } from "../types";
 import { formatDuration } from "./ResponseViewer";
-import { specToCurl } from "../utils/curl";
-import { DiffView } from "./DiffView";
 import { RetentionPopover } from "./RetentionPopover";
 import { Icon } from "./Icon";
 import { UrlDisplay } from "./UrlDisplay";
@@ -47,8 +44,6 @@ export function HistorySidebar() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState<"timeline" | "endpoints">("timeline");
   const [hasMore, setHasMore] = useState(false);
-  const [diffPick, setDiffPick] = useState<number | null>(null);
-  const [diffPair, setDiffPair] = useState<[number, number] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Instant-feel search: debounce keystrokes slightly.
@@ -102,17 +97,6 @@ export function HistorySidebar() {
     setEntries((prev) =>
       prev.map((e) => (e.id === id ? { ...e, ...patch } : e)),
     );
-
-  const pickForDiff = (id: number) => {
-    if (diffPick === null) {
-      setDiffPick(id);
-    } else if (diffPick === id) {
-      setDiffPick(null);
-    } else {
-      setDiffPair([diffPick, id]);
-      setDiffPick(null);
-    }
-  };
 
   return (
     <aside className="sidebar">
@@ -258,21 +242,15 @@ export function HistorySidebar() {
         <TimelineList
           entries={entries}
           hasMore={hasMore}
-          diffPick={diffPick}
           onLoadMore={loadMore}
           onPatch={patchEntry}
           onDelete={(id) =>
             setEntries((prev) => prev.filter((x) => x.id !== id))
           }
-          onPickDiff={pickForDiff}
           searching={Boolean(filters.query)}
         />
       ) : (
         <EndpointList historyVersion={historyVersion} />
-      )}
-
-      {diffPair && (
-        <DiffView ids={diffPair} onClose={() => setDiffPair(null)} />
       )}
     </aside>
   );
@@ -283,23 +261,19 @@ export function HistorySidebar() {
 interface TimelineProps {
   entries: HistorySummary[];
   hasMore: boolean;
-  diffPick: number | null;
   searching: boolean;
   onLoadMore: () => void;
   onPatch: (id: number, patch: Partial<HistorySummary>) => void;
   onDelete: (id: number) => void;
-  onPickDiff: (id: number) => void;
 }
 
 function TimelineList({
   entries,
   hasMore,
-  diffPick,
   searching,
   onLoadMore,
   onPatch,
   onDelete,
-  onPickDiff,
 }: TimelineProps) {
   const groups = searching ? null : groupByDay(entries);
 
@@ -313,10 +287,8 @@ function TimelineList({
                 <HistoryItem
                   key={e.id}
                   entry={e}
-                  diffPicked={diffPick === e.id}
                   onPatch={onPatch}
                   onDelete={onDelete}
-                  onPickDiff={onPickDiff}
                 />
               ))}
             </div>
@@ -325,10 +297,8 @@ function TimelineList({
             <HistoryItem
               key={e.id}
               entry={e}
-              diffPicked={diffPick === e.id}
               onPatch={onPatch}
               onDelete={onDelete}
-              onPickDiff={onPickDiff}
             />
           ))}
       {entries.length === 0 && (
@@ -349,20 +319,14 @@ function TimelineList({
 
 function HistoryItem({
   entry: e,
-  diffPicked,
   onPatch,
   onDelete,
-  onPickDiff,
 }: {
   entry: HistorySummary;
-  diffPicked: boolean;
   onPatch: (id: number, patch: Partial<HistorySummary>) => void;
   onDelete: (id: number) => void;
-  onPickDiff: (id: number) => void;
 }) {
   const newTab = useTabs((s) => s.newTab);
-  const [editingLabel, setEditingLabel] = useState(false);
-  const [labelDraft, setLabelDraft] = useState("");
 
   const open = async () => {
     const detail = await historyGet(e.id);
@@ -378,96 +342,53 @@ function HistoryItem({
     });
   };
 
-  const copyCurl = async () => {
-    const detail = await historyGet(e.id);
-    copyText(specToCurl(detail.req_spec));
-  };
-
-  const saveLabel = async () => {
-    const label = labelDraft.trim() || null;
-    await historySetLabel(e.id, label);
-    onPatch(e.id, { label });
-    setEditingLabel(false);
-  };
-
   return (
-    <div className={`history-item${diffPicked ? " diff-picked" : ""}`}>
+    <div className="history-item">
       <div className="history-item-main" onClick={open} title={e.url}>
         <span className={`hist-method method-${e.method}`}>{e.method}</span>
         <span className="hist-url">
           {e.label ? <span className="hist-label">{e.label} </span> : null}
           {shortUrl(e)}
         </span>
-        <span className={`hist-status ${histStatusClass(e)}`}>
-          {e.error ? "ERR" : (e.status ?? "")}
+        {/* Status + time by default; on hover the controls take their place. */}
+        <span className="hist-end">
+          <span className="hist-meta">
+            <span className={`hist-status ${histStatusClass(e)}`}>
+              {e.error ? "ERR" : (e.status ?? "")}
+            </span>
+            {e.duration_ms != null && (
+              <span className="hist-time">{formatDuration(e.duration_ms)}</span>
+            )}
+          </span>
+          <span className="hist-controls">
+            <button
+              className={e.pinned ? "pinned" : ""}
+              title={
+                e.pinned ? "Saved (click to unsave)" : "Save (kept forever)"
+              }
+              onClick={async (ev) => {
+                ev.stopPropagation();
+                await historySetPinned(e.id, !e.pinned);
+                onPatch(e.id, { pinned: !e.pinned });
+              }}
+            >
+              <Icon name={e.pinned ? "star-filled" : "star"} size={15} />
+            </button>
+            <button
+              title="Delete entry"
+              onClick={async (ev) => {
+                ev.stopPropagation();
+                await historyDelete(e.id);
+                onDelete(e.id);
+              }}
+            >
+              <Icon name="trash" size={15} />
+            </button>
+          </span>
         </span>
-        {e.duration_ms != null && (
-          <span className="hist-time">{formatDuration(e.duration_ms)}</span>
-        )}
       </div>
 
       {e.snippet && <Snippet text={e.snippet} />}
-
-      {editingLabel ? (
-        <div className="label-editor">
-          <input
-            autoFocus
-            value={labelDraft}
-            placeholder="label…"
-            onChange={(ev) => setLabelDraft(ev.target.value)}
-            onKeyDown={(ev) => {
-              if (ev.key === "Enter") void saveLabel();
-              if (ev.key === "Escape") setEditingLabel(false);
-            }}
-          />
-          <button onClick={() => void saveLabel()}>ok</button>
-        </div>
-      ) : (
-        <div className="hist-actions">
-          <button
-            className={e.pinned ? "pinned" : ""}
-            title={e.pinned ? "Unpin" : "Pin (kept forever)"}
-            onClick={async () => {
-              await historySetPinned(e.id, !e.pinned);
-              onPatch(e.id, { pinned: !e.pinned });
-            }}
-          >
-            <Icon name={e.pinned ? "star-filled" : "star"} />
-          </button>
-          <button
-            title="Label"
-            onClick={() => {
-              setLabelDraft(e.label ?? "");
-              setEditingLabel(true);
-            }}
-          >
-            <Icon name="pencil" />
-          </button>
-          <button
-            className={diffPicked ? "pinned" : ""}
-            title="Compare: pick two entries"
-            onClick={() => onPickDiff(e.id)}
-          >
-            <Icon name="diff" />
-          </button>
-          <button
-            className="hist-curl"
-            title="Copy as cURL"
-            onClick={() => void copyCurl()}
-          >
-            curl
-          </button>
-          <button
-            title="Delete entry"
-            onClick={async () => {
-              await historyDelete(e.id);
-              onDelete(e.id);
-            }}
-          >
-            <Icon name="trash" />
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -586,23 +507,6 @@ function EndpointList({ historyVersion }: { historyVersion: number }) {
 }
 
 /* ------------------------------------------------------------------ */
-
-function copyText(text: string) {
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text).catch(() => copyFallback(text));
-  } else {
-    copyFallback(text);
-  }
-}
-
-function copyFallback(text: string) {
-  const ta = document.createElement("textarea");
-  ta.value = text;
-  document.body.appendChild(ta);
-  ta.select();
-  document.execCommand("copy");
-  ta.remove();
-}
 
 function nextDay(isoDate: string): string {
   const d = new Date(`${isoDate}T00:00:00`);
