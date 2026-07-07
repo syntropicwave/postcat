@@ -173,6 +173,18 @@ textarea:focus-visible {
   color: var(--text);
 }
 
+/* decorum hard-codes a near-black hover tint for min/max that's invisible on
+   the dark theme — override it (and the close red) with theme-aware colours.
+   !important beats the plugin's inline hover styles. */
+[data-tauri-decorum-tb] button:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+[data-tauri-decorum-tb] #decorum-tb-close:hover {
+  background-color: #e81123 !important;
+  color: #fff !important;
+}
+
 /* ---------- Resizable dividers ---------- */
 
 .resize-handle {
