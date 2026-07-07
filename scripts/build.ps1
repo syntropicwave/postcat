@@ -100,6 +100,15 @@ function Do-Start {
   $running = Get-RunningPid
   if ($running) { Write-Host "Already running (pid $running). Use 'restart' to rebuild." -ForegroundColor Yellow; return }
 
+  # A running postcat locks target/release/postcat.exe → the build can't
+  # overwrite it (os error 5) or bundle it (os error 32). Warn early.
+  $instances = Get-Process postcat -ErrorAction SilentlyContinue
+  if ($instances) {
+    Write-Host ("WARNING: {0} postcat instance(s) running (pid {1}) — they lock the release exe and the build WILL fail. Close them first." -f `
+        $instances.Count, (($instances | Select-Object -ExpandProperty Id) -join ", ")) -ForegroundColor Red
+    return
+  }
+
   $buildArgs = if ($NoBundle) { "-- --no-bundle" } else { "" }
 
   # Inner runner: set PATH (GNU patch + cargo), run the build, bracket the log
