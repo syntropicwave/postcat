@@ -28,6 +28,12 @@ export function TabBar() {
     x: number;
     y: number;
   } | null>(null);
+  // Only the hovered tab whose title is actually clipped gets a peek overlay.
+  const [peekId, setPeekId] = useState<string | null>(null);
+  const onTabEnter = (e: React.MouseEvent<HTMLDivElement>, id: string) => {
+    const title = e.currentTarget.querySelector<HTMLElement>(".tab-title");
+    setPeekId(title && title.scrollWidth > title.clientWidth + 1 ? id : null);
+  };
 
   // Group runs of adjacent tabs that share the same host alias.
   const groups: Group[] = [];
@@ -62,6 +68,8 @@ export function TabBar() {
             : undefined
         }
         onClick={() => setActive(tab.id)}
+        onMouseEnter={(e) => onTabEnter(e, tab.id)}
+        onMouseLeave={() => setPeekId((p) => (p === tab.id ? null : p))}
         onAuxClick={(e) => {
           if (e.button === 1) {
             e.preventDefault();
@@ -88,16 +96,19 @@ export function TabBar() {
         >
           ×
         </button>
-        {/* On hover, reveal the full title as an overlay (no layout shift). */}
-        <div className="tab-peek" aria-hidden="true">
-          <span className={`tab-method method-${tab.method}`}>
-            {tab.method}
-          </span>
-          <span className="tab-peek-title">
-            {title}
-            {dirty}
-          </span>
-        </div>
+        {/* When the title is clipped, reveal it in full as an overlay that
+            grows to the right — no layout shift, only for this tab. */}
+        {peekId === tab.id && (
+          <div className="tab-peek" aria-hidden="true">
+            <span className={`tab-method method-${tab.method}`}>
+              {tab.method}
+            </span>
+            <span className="tab-peek-title">
+              {title}
+              {dirty}
+            </span>
+          </div>
+        )}
       </div>
     );
   };
