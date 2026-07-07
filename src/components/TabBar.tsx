@@ -176,20 +176,23 @@ export function TabBar() {
           setMenu({ tabId: tab.id, x: e.clientX, y: e.clientY });
         }}
       >
-        {/* The method badge reserves the lead slot; on hover a close button
-            appears over it (no layout shift). Removing the always-on × frees
-            horizontal space. */}
-        <span className={`tab-method method-${tab.method}`}>{tab.method}</span>
-        <button
-          className="tab-x"
-          title="Close tab"
-          onClick={(e) => {
-            e.stopPropagation();
-            closeTab(tab.id);
-          }}
-        >
-          <Icon name="x" size={15} />
-        </button>
+        {/* The method badge reserves the lead slot; on hover the close button
+            fills it (no layout shift). Removing the always-on × frees space. */}
+        <span className="tab-lead">
+          <span className={`tab-method method-${tab.method}`}>
+            {tab.method}
+          </span>
+          <button
+            className="tab-x"
+            title="Close tab"
+            onClick={(e) => {
+              e.stopPropagation();
+              closeTab(tab.id);
+            }}
+          >
+            <Icon name="x" size={20} />
+          </button>
+        </span>
         <span className="tab-title">
           {tabTitle(tab, m, grouped)}
           {dirty}
@@ -284,7 +287,7 @@ export function TabBar() {
                 setPeek(null);
               }}
             >
-              <Icon name="x" size={15} />
+              <Icon name="x" size={20} />
             </button>
             <span className="tab-peek-title">
               {peek.title}

@@ -420,6 +420,15 @@ textarea:focus-visible {
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
+/* The lead slot holds the method badge and, on hover, the close ×. It's the
+   positioning context for the × so the × centres over the method (both axes)
+   regardless of the method's width. */
+.tab-lead {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .tab-method {
   font-size: 10px;
   font-weight: 700;
@@ -459,19 +468,15 @@ textarea:focus-visible {
   font-size: 12px;
 }
 
-/* Close button: sits over the method badge (same lead position), revealed on
-   hover. Absolute so it never affects the tab's layout. top/bottom:0 + centre
-   both axes; the SVG is a block so no baseline gap throws off the vertical
-   centring. */
+/* Close button: centred over the method badge via the relative .tab-lead.
+   inset expands the hit area a little beyond the badge; flexbox centres the
+   icon on both axes. The SVG is a block so no baseline gap offsets it. */
 .tab-x {
   position: absolute;
-  left: 4px;
-  top: 0;
-  bottom: 0;
+  inset: -3px -5px;
   display: none;
   align-items: center;
   justify-content: center;
-  width: 22px;
   color: var(--text-dim);
 }
 
@@ -487,12 +492,11 @@ textarea:focus-visible {
    so it highlights on hover and closes directly. */
 .tab-peek-x {
   pointer-events: auto;
+  align-self: stretch;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  align-self: stretch;
-  margin: 0 -6px 0 -4px;
+  padding: 0 3px;
   color: var(--text-dim);
 }
 
