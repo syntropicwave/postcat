@@ -362,6 +362,7 @@ textarea:focus-visible {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 }
 
 .request-editor {
@@ -369,8 +370,10 @@ textarea:focus-visible {
   flex-direction: column;
   border-bottom: 1px solid var(--border);
   height: var(--req-h, 45%);
-  min-height: 160px;
-  flex-shrink: 0;
+  /* Keep the request pane at its size while there's room, but let it shrink
+     (rather than clip) when the window/response needs the space. */
+  min-height: 120px;
+  flex-shrink: 1;
 }
 
 /* Side-by-side ("right") layout: request left, response right. */
@@ -382,7 +385,7 @@ textarea:focus-visible {
   height: auto;
   min-height: 0;
   width: var(--req-w, 50%);
-  min-width: 320px;
+  min-width: 240px;
   border-bottom: none;
   border-right: 1px solid var(--border);
 }
@@ -391,6 +394,11 @@ textarea:focus-visible {
   display: flex;
   gap: 8px;
   padding: 10px;
+}
+
+/* Only the address field flexes; the method + action buttons keep their size. */
+.url-bar > :not(.url-input-wrap) {
+  flex-shrink: 0;
 }
 
 .method {
@@ -403,6 +411,9 @@ textarea:focus-visible {
 
 .url-input {
   flex: 1;
+  /* Inputs have an intrinsic min-width (~20 chars); without this the field
+     refuses to shrink and the Send/Save buttons overlap it on narrow windows. */
+  min-width: 0;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1099,8 +1110,11 @@ textarea:focus-visible {
   display: flex;
   flex-direction: column;
   width: 320px;
-  min-width: 200px;
-  flex-shrink: 0;
+  /* Shrink (down to a usable minimum) when the window gets narrow, and never
+     take more than half the window, so the main area always has room. */
+  min-width: 180px;
+  max-width: 50%;
+  flex-shrink: 1;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
 }
@@ -1562,6 +1576,7 @@ textarea:focus-visible {
 .url-input-wrap {
   position: relative;
   flex: 1;
+  min-width: 0;
   display: flex;
 }
 
