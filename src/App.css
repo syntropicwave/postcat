@@ -472,6 +472,16 @@ textarea:focus-visible {
   border-right: none;
 }
 
+/* The active tab's opaque background hides the group's tint/top bar, so give
+   it its own group-coloured top bar (plus the usual active underline) — it
+   stays visibly part of the group. */
+.tab-group .tab.active {
+  background: color-mix(in srgb, var(--group-color) 8%, var(--bg));
+  box-shadow:
+    inset 0 2px 0 var(--group-color),
+    inset 0 -2px 0 var(--accent);
+}
+
 /* Tab context menu (right-click). */
 .tab-menu {
   position: fixed;
