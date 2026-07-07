@@ -1788,6 +1788,39 @@ textarea:focus-visible {
   margin: 4px 2px;
 }
 
+/* ---------- Crash guard (ErrorBoundary fallback) ---------- */
+
+.crash-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text);
+}
+
+.crash-screen pre {
+  max-width: 640px;
+  max-height: 300px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--server-error);
+  white-space: pre-wrap;
+  text-align: left;
+}
+
+.crash-actions {
+  display: flex;
+  gap: 8px;
+}
+
 /* ---------- Modals ---------- */
 
 .modal-backdrop {

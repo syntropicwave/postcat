@@ -136,8 +136,13 @@ export function TabBar() {
         tabsWidth += t.offsetWidth;
       });
       const slack = tabsWidth - els.length * MIN_TAB;
-      if (slack >= MIN_TAB + 40)
-        setCapacity(shown + Math.max(1, Math.floor(slack / MIN_TAB)));
+      // Reserve a min tab PLUS a possible new group label per added tab, so a
+      // grow can never overshoot into an overflow that the shrink branch would
+      // then undo — that fight is an infinite render loop. Add only as many as
+      // definitely fit even in the worst (all-new-labels) case.
+      const GROW_UNIT = MIN_TAB + 50;
+      if (slack >= GROW_UNIT)
+        setCapacity(shown + Math.floor(slack / GROW_UNIT));
     }
   }, [shown, count]);
 
