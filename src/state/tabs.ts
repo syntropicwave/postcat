@@ -55,6 +55,8 @@ export interface Tab {
 interface TabsState {
   tabs: Tab[];
   activeTabId: string;
+  /// Bumped when a tab is opened, so the address bar can grab focus.
+  focusNonce: number;
   /// Bumped after every send so the history sidebar knows to refetch.
   historyVersion: number;
   /// Bumped after collection mutations so the collections panel refetches.
@@ -199,6 +201,7 @@ export const useTabs = create<TabsState>()(
     (set, get) => ({
       tabs: [makeTab()],
       activeTabId: "",
+      focusNonce: 0,
       historyVersion: 0,
       collectionsVersion: 0,
       bumpCollections: () =>
@@ -206,7 +209,11 @@ export const useTabs = create<TabsState>()(
 
       newTab: (partial) => {
         const tab = makeTab(partial);
-        set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }));
+        set((s) => ({
+          tabs: [...s.tabs, tab],
+          activeTabId: tab.id,
+          focusNonce: s.focusNonce + 1,
+        }));
         return tab.id;
       },
 
@@ -237,7 +244,7 @@ export const useTabs = create<TabsState>()(
           // Insert right after the source so same-alias tabs stay adjacent.
           const tabs = [...s.tabs];
           tabs.splice(idx + 1, 0, copy);
-          return { tabs, activeTabId: copy.id };
+          return { tabs, activeTabId: copy.id, focusNonce: s.focusNonce + 1 };
         });
       },
 

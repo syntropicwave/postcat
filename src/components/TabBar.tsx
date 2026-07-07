@@ -39,54 +39,68 @@ export function TabBar() {
     else groups.push({ key, match: m, cells: [{ tab, m }] });
   }
 
-  const renderTab = ({ tab, m }: Cell, grouped: boolean) => (
-    <div
-      key={tab.id}
-      className={`tab${tab.id === activeTabId ? " active" : ""}${
-        m && !grouped ? " tab-aliased" : ""
-      }`}
-      style={
-        m && !grouped
-          ? ({
-              "--tab-color": m.alias.color || "var(--accent)",
-            } as React.CSSProperties)
-          : undefined
-      }
-      onClick={() => setActive(tab.id)}
-      onAuxClick={(e) => {
-        if (e.button === 1) {
-          e.preventDefault();
-          closeTab(tab.id);
+  const renderTab = ({ tab, m }: Cell, grouped: boolean) => {
+    const title = tab.itemName ? (
+      tab.itemName
+    ) : grouped && m ? (
+      tab.url.slice(m.end).replace(/^\//, "") || "/"
+    ) : (
+      <UrlDisplay url={tab.url} scheme="hide" dropLeadingSlash />
+    );
+    const dirty = tab.dirty && tab.itemId ? " •" : "";
+    return (
+      <div
+        key={tab.id}
+        className={`tab${tab.id === activeTabId ? " active" : ""}${
+          m && !grouped ? " tab-aliased" : ""
+        }`}
+        style={
+          m && !grouped
+            ? ({
+                "--tab-color": m.alias.color || "var(--accent)",
+              } as React.CSSProperties)
+            : undefined
         }
-      }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        setMenu({ tabId: tab.id, x: e.clientX, y: e.clientY });
-      }}
-    >
-      <span className={`tab-method method-${tab.method}`}>{tab.method}</span>
-      <span className="tab-title">
-        {tab.itemName ? (
-          tab.itemName
-        ) : grouped && m ? (
-          tab.url.slice(m.end).replace(/^\//, "") || "/"
-        ) : (
-          <UrlDisplay url={tab.url} scheme="hide" dropLeadingSlash />
-        )}
-        {tab.dirty && tab.itemId ? " •" : ""}
-      </span>
-      <button
-        className="tab-close"
-        title="Close tab"
-        onClick={(e) => {
-          e.stopPropagation();
-          closeTab(tab.id);
+        onClick={() => setActive(tab.id)}
+        onAuxClick={(e) => {
+          if (e.button === 1) {
+            e.preventDefault();
+            closeTab(tab.id);
+          }
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenu({ tabId: tab.id, x: e.clientX, y: e.clientY });
         }}
       >
-        ×
-      </button>
-    </div>
-  );
+        <span className={`tab-method method-${tab.method}`}>{tab.method}</span>
+        <span className="tab-title">
+          {title}
+          {dirty}
+        </span>
+        <button
+          className="tab-close"
+          title="Close tab"
+          onClick={(e) => {
+            e.stopPropagation();
+            closeTab(tab.id);
+          }}
+        >
+          ×
+        </button>
+        {/* On hover, reveal the full title as an overlay (no layout shift). */}
+        <div className="tab-peek" aria-hidden="true">
+          <span className={`tab-method method-${tab.method}`}>
+            {tab.method}
+          </span>
+          <span className="tab-peek-title">
+            {title}
+            {dirty}
+          </span>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="tab-bar">

@@ -127,9 +127,9 @@ textarea:focus-visible {
   flex-shrink: 0;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
-  /* Reserve room for decorum's native window controls (3 × 58px), which sit
+  /* Reserve room for decorum's native window controls (3 × 46px), which sit
      in a fixed strip at the top-right. */
-  padding-right: 174px;
+  padding-right: 138px;
 }
 
 .titlebar .tab-bar {
@@ -174,9 +174,11 @@ textarea:focus-visible {
 }
 
 /* Fill the title-bar's content height (34px bar − 1px divider = 33px) so the
-   hover highlight is flush with the divider — no 1px gap under the button. */
+   hover highlight is flush with the divider — no 1px gap under the button.
+   Narrower than decorum's 58px default, closer to Chrome's compact controls. */
 [data-tauri-decorum-tb] button {
   height: 33px !important;
+  width: 46px !important;
 }
 
 /* decorum hard-codes a near-black hover tint for min/max that's invisible on
@@ -270,9 +272,16 @@ textarea:focus-visible {
   border-bottom: 1px solid var(--border);
 }
 
+.history-search-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+}
+
 .history-search {
   flex: 1;
-  padding: 6px 8px;
+  min-width: 0;
+  padding: 6px 26px 6px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg);
@@ -281,6 +290,25 @@ textarea:focus-visible {
 
 .history-search:focus {
   border-color: var(--accent);
+}
+
+.history-search-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: var(--text-dim);
+}
+
+.history-search-clear:hover {
+  color: var(--text);
+  background: var(--bg-hover);
 }
 
 .history-clear {
@@ -376,6 +404,7 @@ textarea:focus-visible {
 }
 
 .tab {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -402,6 +431,37 @@ textarea:focus-visible {
   font-size: 12px;
 }
 
+/* Hover reveal: the full tab title as an overlay, over the tabs to the right
+   (never shifting the layout). */
+.tab-peek {
+  display: none;
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  height: calc(100% + 2px);
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.32);
+  z-index: 60;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tab.active .tab-peek {
+  background: var(--bg);
+}
+
+.tab:hover .tab-peek {
+  display: flex;
+}
+
+.tab-peek-title {
+  font-size: 12px;
+}
+
 .tab-close {
   color: var(--text-dim);
   padding: 0 2px;
@@ -412,13 +472,14 @@ textarea:focus-visible {
 }
 
 .tab-new {
-  padding: 6px 12px;
-  font-size: 16px;
+  padding: 0 15px;
+  font-size: 21px;
   color: var(--text-dim);
 }
 
 .tab-new:hover {
   color: var(--accent);
+  background: var(--bg-hover);
 }
 
 /* Colour-code a standalone aliased tab with a top strip in its host colour. */
@@ -447,10 +508,15 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   align-self: stretch;
-  padding: 0 6px 0 8px;
+  padding: 0 2px 0 8px;
+}
+
+.tab-group-label .host-chip {
+  margin-right: 0;
 }
 
 .tab-group .tab {
+  padding-left: 6px;
   border-right-color: color-mix(in srgb, var(--group-color) 30%, var(--border));
 }
 
@@ -1723,6 +1789,7 @@ textarea:focus-visible {
 .host-chip {
   display: inline-flex;
   align-items: center;
+  margin-right: 3px;
   padding: 1px 6px;
   border-radius: 5px;
   font-family: Inter, "Segoe UI", sans-serif;

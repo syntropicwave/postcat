@@ -12,6 +12,7 @@ import {
 } from "../state/hostAliases";
 import { HostChip } from "./HostChip";
 import { UrlDisplay } from "./UrlDisplay";
+import { useTabs } from "../state/tabs";
 
 interface Props {
   value: string;
@@ -41,6 +42,18 @@ export function UrlInput({ value, collectionId, onChange, onCurl }: Props) {
   const underlayRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<HTMLSpanElement>(null);
   const dismissedKey = useRef<string | null>(null);
+  const firstFocus = useRef(true);
+
+  // A new/duplicated tab was opened → grab the address bar (but not on the
+  // initial mount).
+  const focusNonce = useTabs((s) => s.focusNonce);
+  useEffect(() => {
+    if (firstFocus.current) {
+      firstFocus.current = false;
+      return;
+    }
+    inputRef.current?.focus();
+  }, [focusNonce]);
 
   const [vars, setVars] = useState<Variable[]>([]);
   const [varToken, setVarToken] = useState<{ start: number } | null>(null);

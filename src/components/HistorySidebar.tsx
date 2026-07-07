@@ -117,12 +117,23 @@ export function HistorySidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <input
-          className="history-search"
-          placeholder="Search history — URL, headers, bodies…"
-          value={rawQuery}
-          onChange={(e) => setRawQuery(e.target.value)}
-        />
+        <div className="history-search-wrap">
+          <input
+            className="history-search"
+            placeholder="Search history — URL, headers, bodies…"
+            value={rawQuery}
+            onChange={(e) => setRawQuery(e.target.value)}
+          />
+          {rawQuery && (
+            <button
+              className="history-search-clear"
+              title="Clear search"
+              onClick={() => setRawQuery("")}
+            >
+              <Icon name="x" size={13} />
+            </button>
+          )}
+        </div>
         <button
           className={`icon-btn${filtersOpen || activeFilterCount ? " active" : ""}`}
           title="Filters"

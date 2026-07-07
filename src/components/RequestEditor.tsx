@@ -119,7 +119,7 @@ function MethodSelect({
       }}
     >
       {HTTP_METHODS.map((m) => (
-        <option key={m} value={m}>
+        <option key={m} value={m} className={`method-${m}`}>
           {m}
         </option>
       ))}
