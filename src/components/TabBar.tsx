@@ -115,36 +115,29 @@ export function TabBar() {
   const visibleTabs = tabs.slice(start, start + shown);
   const overflowed = shown < count;
 
-  // Fit as many tabs as possible. Runs synchronously before paint.
-  //   shrink: the tabs, crammed to their min, still overflow the bar.
-  //   grow:   the visible tabs (which fill the bar via flex-grow) carry more
-  //           than a whole extra tab's width above their minimum, so another
-  //           hidden tab would fit. A margin avoids flip-flopping at the edge.
+  // Fit the tabs by SHRINKING the visible window until it stops overflowing.
+  // Shrink-only is monotonic, so it can never fight itself into an infinite
+  // render loop (a real crash we hit trying to also grow here). Showing MORE
+  // tabs happens by resetting to "show all" — on a tab-count change (here) or a
+  // window resize (below) — and letting this shrink back down to the true fit.
+  const prevCount = useRef(count);
   useLayoutEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
-    const over = bar.scrollWidth - bar.clientWidth;
-    if (over > 1) {
-      if (shown > 1)
-        setCapacity(
-          Math.max(1, shown - Math.max(1, Math.ceil(over / MIN_TAB))),
-        );
-    } else if (shown < count) {
-      let tabsWidth = 0;
-      const els = bar.querySelectorAll<HTMLElement>(".tab");
-      els.forEach((t) => {
-        tabsWidth += t.offsetWidth;
-      });
-      const slack = tabsWidth - els.length * MIN_TAB;
-      // Reserve a min tab PLUS a possible new group label per added tab, so a
-      // grow can never overshoot into an overflow that the shrink branch would
-      // then undo — that fight is an infinite render loop. Add only as many as
-      // definitely fit even in the worst (all-new-labels) case.
-      const GROW_UNIT = MIN_TAB + 50;
-      if (slack >= GROW_UNIT)
-        setCapacity(shown + Math.floor(slack / GROW_UNIT));
+    if (prevCount.current !== count) {
+      prevCount.current = count;
+      if (capacity < count) {
+        // Re-show all (once per count change); the next pass measures + shrinks.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setCapacity(count);
+        return;
+      }
     }
-  }, [shown, count]);
+    const over = bar.scrollWidth - bar.clientWidth;
+    if (over > 1 && shown > 1) {
+      setCapacity(Math.max(1, shown - Math.max(1, Math.ceil(over / MIN_TAB))));
+    }
+  }, [shown, count, capacity]);
 
   // A window resize changes the available width; re-expand and let the layout
   // effect settle to the new fit.
