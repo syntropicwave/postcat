@@ -26,7 +26,6 @@ interface Group {
 // it never redraws the tabs' own separators.
 interface Peek {
   id: string;
-  method: string;
   title: ReactNode;
   dirty: string;
   left: number;
@@ -117,7 +116,6 @@ export function TabBar() {
     const aliasColor = !grouped && m ? m.alias.color || "var(--accent)" : null;
     setPeek({
       id: tab.id,
-      method: tab.method,
       title: tabTitle(tab, m, grouped),
       dirty: tab.dirty && tab.itemId ? " •" : "",
       left: r.left,
@@ -161,21 +159,24 @@ export function TabBar() {
           setMenu({ tabId: tab.id, x: e.clientX, y: e.clientY });
         }}
       >
+        {/* The method badge reserves the lead slot; on hover a close button
+            appears over it (no layout shift). Removing the always-on × frees
+            horizontal space. */}
         <span className={`tab-method method-${tab.method}`}>{tab.method}</span>
-        <span className="tab-title">
-          {tabTitle(tab, m, grouped)}
-          {dirty}
-        </span>
         <button
-          className="tab-close"
+          className="tab-x"
           title="Close tab"
           onClick={(e) => {
             e.stopPropagation();
             closeTab(tab.id);
           }}
         >
-          ×
+          <Icon name="x" size={13} />
         </button>
+        <span className="tab-title">
+          {tabTitle(tab, m, grouped)}
+          {dirty}
+        </span>
       </div>
     );
   };
@@ -245,8 +246,11 @@ export function TabBar() {
               boxShadow: peek.boxShadow,
             }}
           >
-            <span className={`tab-method method-${peek.method}`}>
-              {peek.method}
+            {/* Mirror the tab's hover state: show the close × in the lead
+                slot. The overlay is click-through, so clicking it lands on the
+                real close button on the tab underneath (same position). */}
+            <span className="tab-x-peek">
+              <Icon name="x" size={13} />
             </span>
             <span className="tab-peek-title">
               {peek.title}

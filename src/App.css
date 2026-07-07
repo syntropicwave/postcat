@@ -425,6 +425,12 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
+/* On hover the close button takes the lead slot; hide the method but keep its
+   width (visibility, not display) so the title doesn't shift. */
+.tab:hover .tab-method {
+  visibility: hidden;
+}
+
 .tab-title {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -453,13 +459,33 @@ textarea:focus-visible {
   font-size: 12px;
 }
 
-.tab-close {
-  color: var(--text-dim);
+/* Close button: sits over the method badge (same lead position), revealed on
+   hover. Absolute so it never affects the tab's layout. */
+.tab-x {
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  display: none;
+  align-items: center;
   padding: 0 2px;
+  color: var(--text-dim);
 }
 
-.tab-close:hover {
+.tab:hover .tab-x {
+  display: flex;
+}
+
+.tab-x:hover {
   color: var(--server-error);
+}
+
+/* The overlay's mirrored × (visual only — the click passes through to the real
+   .tab-x underneath). A normal flex child so it fills the lead slot. */
+.tab-x-peek {
+  display: flex;
+  align-items: center;
+  color: var(--text-dim);
 }
 
 .tab-new {
