@@ -400,7 +400,8 @@ textarea:focus-visible {
   align-items: center;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
-  overflow-x: auto;
+  /* No scrolling: tabs shrink, then overflow into the chevron dropdown. */
+  overflow: hidden;
 }
 
 .tab {
@@ -411,8 +412,43 @@ textarea:focus-visible {
   padding: 8px 10px;
   border-right: 1px solid var(--border);
   cursor: pointer;
+  /* Shrink to share the row; collapse into the overflow list past the min. */
+  flex: 0 1 auto;
+  min-width: 90px;
   max-width: 220px;
   white-space: nowrap;
+}
+
+/* Let grouped tabs shrink too. */
+.tab-group {
+  min-width: 0;
+}
+
+/* Overflow chevron (left) — opens the all-tabs list. */
+.tab-overflow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  align-self: stretch;
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border-right: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.tab-overflow:hover,
+.tab-overflow.active {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.tab-overflow-count {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tab-overflow svg {
+  display: block;
 }
 
 .tab.active {
@@ -606,6 +642,94 @@ textarea:focus-visible {
 
 .tab-menu button:hover {
   background: var(--bg-hover);
+}
+
+/* Overflow "all tabs" list (Postman-style search + list). */
+.tab-list {
+  position: fixed;
+  z-index: 300;
+  width: 300px;
+  max-width: 90vw;
+  padding: 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tab-list-search {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  outline: none;
+}
+
+.tab-list-search:focus {
+  border-color: var(--accent);
+}
+
+.tab-list-items {
+  display: flex;
+  flex-direction: column;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.tab-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tab-list-item:hover {
+  background: var(--bg-hover);
+}
+
+.tab-list-item.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.tab-list-item .tab-method {
+  flex: 0 0 auto;
+}
+
+.tab-list-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.tab-list-x {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+.tab-list-x:hover {
+  color: var(--server-error);
+}
+
+.tab-list-x svg {
+  display: block;
+}
+
+.tab-list-empty {
+  padding: 10px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 12px;
 }
 
 /* ---------- Request editor ---------- */

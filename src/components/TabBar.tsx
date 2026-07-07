@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { useTabs } from "../state/tabs";
 import type { Tab } from "../state/tabs";
@@ -35,6 +41,9 @@ interface Peek {
   background: string;
   boxShadow: string;
 }
+
+// Minimum shrunk tab width; also the unit for the overflow fit calculation.
+const MIN_TAB = 90;
 
 // Reproduce the tab's own look (background + decoration bars) as inline styles,
 // since the portal is detached from the .tab-group / .active ancestors that the
@@ -89,9 +98,52 @@ export function TabBar() {
     clearTimer.current = window.setTimeout(() => setPeek(null), 90);
   };
 
-  // Group runs of adjacent tabs that share the same host alias.
+  // Overflow: tabs shrink via CSS; when even shrunk they don't fit, the oldest
+  // collapse and a chevron on the left opens a searchable list of all tabs.
+  const barRef = useRef<HTMLDivElement>(null);
+  const [capacity, setCapacity] = useState(999);
+  const [list, setList] = useState<{ x: number; y: number } | null>(null);
+
+  const count = tabs.length;
+  const activeIndex = tabs.findIndex((t) => t.id === activeTabId);
+  const shown = Math.max(1, Math.min(capacity, count));
+  // Show a contiguous window ending at the newest tab, shifted left if needed
+  // to keep the active tab visible.
+  let start = Math.max(0, count - shown);
+  if (activeIndex >= 0 && activeIndex < start) start = activeIndex;
+  start = Math.min(start, Math.max(0, count - shown));
+  const visibleTabs = tabs.slice(start, start + shown);
+  const overflowed = shown < count;
+
+  // Fit as many tabs as possible: shrink the window while it overflows, grow it
+  // when there's comfortable slack. Runs synchronously before paint.
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const over = bar.scrollWidth - bar.clientWidth;
+    if (over > 1) {
+      if (shown > 1)
+        setCapacity(
+          Math.max(1, shown - Math.max(1, Math.round(over / MIN_TAB))),
+        );
+    } else if (shown < count) {
+      const slack = bar.clientWidth - bar.scrollWidth;
+      if (slack >= MIN_TAB + 24)
+        setCapacity(shown + Math.max(1, Math.floor(slack / MIN_TAB)));
+    }
+  }, [shown, count]);
+
+  // A window resize changes the available width; re-expand and let the layout
+  // effect settle to the new fit.
+  useEffect(() => {
+    const onResize = () => setCapacity(999);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Group runs of adjacent VISIBLE tabs that share the same host alias.
   const groups: Group[] = [];
-  for (const tab of tabs) {
+  for (const tab of visibleTabs) {
     const m = matchAlias(tab.url, aliases);
     const key = m?.alias.id ?? null;
     const last = groups[groups.length - 1];
@@ -202,18 +254,27 @@ export function TabBar() {
   };
 
   return (
-    <div
-      className="tab-bar"
-      onScroll={() => {
-        cancelClear();
-        setPeek(null);
-      }}
-    >
-      {groups.map((g, gi) => {
+    <div className="tab-bar" ref={barRef}>
+      {overflowed && (
+        <button
+          className={`tab-overflow${list ? " active" : ""}`}
+          title="All tabs"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setList(list ? null : { x: r.left, y: r.bottom });
+          }}
+        >
+          <Icon name="chevron-down" size={16} />
+          <span className="tab-overflow-count">{count}</span>
+        </button>
+      )}
+      {groups.map((g) => {
         const groupColor = g.match?.alias.color || "var(--accent)";
+        const gkey = g.cells[0].tab.id;
         return g.key !== null && g.match && g.cells.length >= 2 ? (
           <div
-            key={`g${gi}`}
+            key={gkey}
             className="tab-group"
             style={{ "--group-color": groupColor } as React.CSSProperties}
           >
@@ -255,6 +316,21 @@ export function TabBar() {
             for (const t of tabs) if (t.id !== menu.tabId) closeTab(t.id);
             setMenu(null);
           }}
+        />
+      )}
+
+      {list && (
+        <TabList
+          x={list.x}
+          y={list.y}
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onPick={(id) => {
+            setActive(id);
+            setList(null);
+          }}
+          onCloseTab={(id) => closeTab(id)}
+          onClose={() => setList(null)}
         />
       )}
 
@@ -335,5 +411,89 @@ function TabMenu({
       <button onClick={onCloseTab}>Close</button>
       <button onClick={onCloseOthers}>Close others</button>
     </div>
+  );
+}
+
+/** Searchable list of ALL tabs (opened from the overflow chevron). */
+function TabList({
+  x,
+  y,
+  tabs,
+  activeTabId,
+  onPick,
+  onCloseTab,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  tabs: Tab[];
+  activeTabId: string;
+  onPick: (id: string) => void;
+  onCloseTab: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState("");
+  useEffect(() => {
+    const off = () => onClose();
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("mousedown", off);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", off);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [onClose]);
+
+  const needle = q.trim().toLowerCase();
+  const rows = tabs.filter(
+    (t) =>
+      !needle ||
+      (t.itemName || t.url).toLowerCase().includes(needle) ||
+      t.method.toLowerCase().includes(needle),
+  );
+
+  return createPortal(
+    <div
+      className="tab-list"
+      style={{ left: x, top: y }}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <input
+        className="tab-list-search"
+        autoFocus
+        spellCheck={false}
+        placeholder="Search tabs"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
+      <div className="tab-list-items">
+        {rows.length === 0 && <div className="tab-list-empty">No tabs</div>}
+        {rows.map((t) => (
+          <div
+            key={t.id}
+            className={`tab-list-item${t.id === activeTabId ? " active" : ""}`}
+            onClick={() => onPick(t.id)}
+          >
+            <span className={`tab-method method-${t.method}`}>{t.method}</span>
+            <span className="tab-list-title">
+              {t.itemName || (
+                <UrlDisplay url={t.url} scheme="hide" dropLeadingSlash />
+              )}
+            </span>
+            <button
+              className="tab-list-x"
+              title="Close tab"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseTab(t.id);
+              }}
+            >
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>,
+    document.body,
   );
 }
