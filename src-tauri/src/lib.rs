@@ -972,6 +972,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_decorum::init())
         .setup(|app| {
             let path = db_path(app.handle())?;
             if let Some(dir) = path.parent() {
@@ -986,6 +987,16 @@ pub fn run() {
             app.manage(RunnerCancels::default());
             app.manage(websocket::WsSessions::default());
             app.manage(sync::SyncSession::default());
+
+            // Custom window chrome: drop the native title bar and let decorum
+            // draw native-style controls (with Windows Snap Layouts). Our own
+            // title bar (the tab strip) lives in the reclaimed space.
+            {
+                use tauri_plugin_decorum::WebviewWindowExt;
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.create_overlay_titlebar();
+                }
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

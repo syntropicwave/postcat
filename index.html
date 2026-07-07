@@ -9,6 +9,9 @@
 
   <body>
     <div id="root"></div>
+    <!-- decorum injects native window controls (min/max/close) into this
+         right-anchored strip; our own title bar / tabs sit to its left. -->
+    <div data-tauri-decorum-tb></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

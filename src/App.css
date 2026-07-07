@@ -108,7 +108,69 @@ textarea:focus-visible {
 
 .app {
   display: flex;
+  flex-direction: column;
   height: 100vh;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* ---------- Custom title bar (tabs + window controls) ---------- */
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  /* Reserve room for decorum's native window controls (3 × 58px), which sit
+     in a fixed strip at the top-right. */
+  padding-right: 174px;
+}
+
+.titlebar .tab-bar {
+  flex: 0 1 auto;
+  min-width: 0;
+  border-bottom: none;
+  align-self: stretch;
+  /* Only ever scroll tabs horizontally; hide the scrollbar (wheel still works). */
+  overflow-y: hidden;
+}
+
+.titlebar .tab-bar::-webkit-scrollbar {
+  height: 0;
+  display: none;
+}
+
+.titlebar .tab,
+.titlebar .tab-new {
+  height: 100%;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.titlebar-drag {
+  flex: 1 1 40px;
+  align-self: stretch;
+  min-width: 24px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* decorum injects the native min/max/close buttons here. */
+[data-tauri-decorum-tb] {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 34px;
+  display: flex;
+  align-items: flex-start;
+  z-index: 200;
+  color: var(--text);
 }
 
 /* ---------- Resizable dividers ---------- */
@@ -1302,20 +1364,7 @@ textarea:focus-visible {
   font-size: 11px;
 }
 
-/* ---------- Top bar / env ---------- */
-
-.top-bar {
-  display: flex;
-  align-items: stretch;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
-}
-
-.top-bar .tab-bar {
-  flex: 1;
-  border-bottom: none;
-  min-width: 0;
-}
+/* ---------- Env bar / actions (in the title bar) ---------- */
 
 .env-bar {
   display: flex;

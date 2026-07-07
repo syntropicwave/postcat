@@ -144,97 +144,100 @@ function App() {
 
   return (
     <div className="app">
-      <div className="sidebar-wrap" style={{ width: sidebarWidth }}>
-        <div className="sidebar-tabs">
+      <div className="titlebar">
+        <TabBar />
+        <div className="titlebar-drag" data-tauri-drag-region="" />
+        <EnvBar />
+        <div className="top-actions">
           <button
-            className={sidebarTab === "history" ? "active" : ""}
-            onClick={() => setSidebarTab("history")}
+            className="icon-btn"
+            title="Sync (end-to-end encrypted)"
+            onClick={() => setSyncOpen(true)}
           >
-            History
+            <Icon name="sync" />
           </button>
           <button
-            className={sidebarTab === "collections" ? "active" : ""}
-            onClick={() => setSidebarTab("collections")}
+            className="icon-btn"
+            title="Host aliases"
+            onClick={() => setHostsOpen(true)}
           >
-            Collections
+            <Icon name="tag" />
+          </button>
+          <button
+            className="icon-btn"
+            title="Cookies"
+            onClick={() => setCookiesOpen(true)}
+          >
+            <Icon name="cookie" />
+          </button>
+          <button
+            className="icon-btn"
+            title="Settings"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Icon name="settings" />
           </button>
         </div>
-        {sidebarTab === "history" ? <HistorySidebar /> : <CollectionsPanel />}
       </div>
-      <ResizeHandle
-        axis="x"
-        onDelta={onSidebarDelta}
-        onReset={() => setSidebarWidth(320)}
-      />
-      <main className="main">
-        <div className="top-bar">
-          <TabBar />
-          <EnvBar />
-          <div className="top-actions">
+      <div className="app-body">
+        <div className="sidebar-wrap" style={{ width: sidebarWidth }}>
+          <div className="sidebar-tabs">
             <button
-              className="icon-btn"
-              title="Sync (end-to-end encrypted)"
-              onClick={() => setSyncOpen(true)}
+              className={sidebarTab === "history" ? "active" : ""}
+              onClick={() => setSidebarTab("history")}
             >
-              <Icon name="sync" />
+              History
             </button>
             <button
-              className="icon-btn"
-              title="Host aliases"
-              onClick={() => setHostsOpen(true)}
+              className={sidebarTab === "collections" ? "active" : ""}
+              onClick={() => setSidebarTab("collections")}
             >
-              <Icon name="tag" />
-            </button>
-            <button
-              className="icon-btn"
-              title="Cookies"
-              onClick={() => setCookiesOpen(true)}
-            >
-              <Icon name="cookie" />
-            </button>
-            <button
-              className="icon-btn"
-              title="Settings"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <Icon name="settings" />
+              Collections
             </button>
           </div>
+          {sidebarTab === "history" ? <HistorySidebar /> : <CollectionsPanel />}
         </div>
-        {active && (
-          <div
-            className={`workspace ${horizontal ? "horizontal" : ""}`}
-            ref={workspaceRef}
-            style={
-              {
-                ...(reqHeight != null ? { "--req-h": `${reqHeight}px` } : {}),
-                ...(reqWidth != null ? { "--req-w": `${reqWidth}px` } : {}),
-              } as React.CSSProperties
-            }
-          >
-            <RequestEditor tab={active} />
-            <ResizeHandle
-              axis={horizontal ? "x" : "y"}
-              onDelta={onReqDelta}
-              onReset={() =>
-                horizontal ? setReqWidth(null) : setReqHeight(null)
+        <ResizeHandle
+          axis="x"
+          onDelta={onSidebarDelta}
+          onReset={() => setSidebarWidth(320)}
+        />
+        <main className="main">
+          {active && (
+            <div
+              className={`workspace ${horizontal ? "horizontal" : ""}`}
+              ref={workspaceRef}
+              style={
+                {
+                  ...(reqHeight != null ? { "--req-h": `${reqHeight}px` } : {}),
+                  ...(reqWidth != null ? { "--req-w": `${reqWidth}px` } : {}),
+                } as React.CSSProperties
               }
-            />
-            {isWsUrl(active.url) ? (
-              <WsPanel tab={active} />
-            ) : (
-              <ResponseViewer
-                response={active.response}
-                error={active.responseError}
-                sending={active.sending}
-                streamText={active.streamText}
-                collectionId={active.collectionId}
-                onDiffPrevious={diffPrevious}
+            >
+              <RequestEditor tab={active} />
+              <ResizeHandle
+                axis={horizontal ? "x" : "y"}
+                onDelta={onReqDelta}
+                onReset={() =>
+                  horizontal ? setReqWidth(null) : setReqHeight(null)
+                }
               />
-            )}
-          </div>
-        )}
-      </main>
+              {isWsUrl(active.url) ? (
+                <WsPanel tab={active} />
+              ) : (
+                <ResponseViewer
+                  response={active.response}
+                  error={active.responseError}
+                  sending={active.sending}
+                  streamText={active.streamText}
+                  collectionId={active.collectionId}
+                  onDiffPrevious={diffPrevious}
+                />
+              )}
+            </div>
+          )}
+        </main>
+      </div>
       {saveTab && <SaveDialog tab={saveTab} onClose={() => setSaveFor(null)} />}
       {cookiesOpen && <CookieManager onClose={() => setCookiesOpen(false)} />}
       {hostsOpen && <HostsDialog onClose={() => setHostsOpen(false)} />}

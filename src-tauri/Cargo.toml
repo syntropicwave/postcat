@@ -59,6 +59,7 @@ flate2 = "1"
 brotli = "7"
 bytes = "1"
 tauri-plugin-dialog = "2"
+tauri-plugin-decorum = "1.1.1"
 
 [dev-dependencies]
 tiny_http = "0.12"

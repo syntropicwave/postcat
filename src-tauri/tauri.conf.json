@@ -10,11 +10,13 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "postcat",
         "width": 1280,
-        "height": 800
+        "height": 800,
+        "decorations": false
       }
     ],
     "security": {
