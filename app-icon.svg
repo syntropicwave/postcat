@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8f79ff"/>
+      <stop offset="1" stop-color="#6849ee"/>
+    </linearGradient>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f9b36b"/>
+      <stop offset="1" stop-color="#f0974a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded-square background -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+
+  <!-- ears -->
+  <path d="M330 322 L268 118 L486 258 Z" fill="url(#fur)"/>
+  <path d="M694 322 L756 118 L538 258 Z" fill="url(#fur)"/>
+  <path d="M340 300 L302 172 L436 262 Z" fill="#ffd6ad"/>
+  <path d="M684 300 L722 172 L588 262 Z" fill="#ffd6ad"/>
+
+  <!-- head -->
+  <ellipse cx="512" cy="452" rx="272" ry="244" fill="url(#fur)"/>
+
+  <!-- forehead tabby stripes -->
+  <g fill="none" stroke="#d97a2f" stroke-width="20" stroke-linecap="round" opacity="0.85">
+    <path d="M512 224 V300"/>
+    <path d="M452 236 L470 306"/>
+    <path d="M572 236 L554 306"/>
+  </g>
+
+  <!-- cheek blush -->
+  <ellipse cx="332" cy="512" rx="52" ry="34" fill="#ff9d7a" opacity="0.45"/>
+  <ellipse cx="692" cy="512" rx="52" ry="34" fill="#ff9d7a" opacity="0.45"/>
+
+  <!-- happy squint eyes (^ ^) -->
+  <g fill="none" stroke="#3a2417" stroke-width="30" stroke-linecap="round">
+    <path d="M372 452 Q425 402 478 452"/>
+    <path d="M546 452 Q599 402 652 452"/>
+  </g>
+
+  <!-- whiskers -->
+  <g stroke="#3a2417" stroke-width="12" stroke-linecap="round" opacity="0.75">
+    <path d="M236 470 L360 484"/>
+    <path d="M232 516 L360 516"/>
+    <path d="M788 470 L664 484"/>
+    <path d="M792 516 L664 516"/>
+  </g>
+
+  <!-- nose -->
+  <path d="M486 486 H538 L512 512 Z" fill="#e06b7a"/>
+
+  <!-- envelope held in the mouth -->
+  <g>
+    <rect x="300" y="516" width="424" height="270" rx="26" fill="#ffffff"/>
+    <rect x="300" y="516" width="424" height="270" rx="26" fill="none" stroke="#dcdce8" stroke-width="6"/>
+    <!-- flap seam -->
+    <path d="M300 540 L512 676 L724 540" fill="none" stroke="#c7c7d6" stroke-width="14" stroke-linejoin="round" stroke-linecap="round"/>
+    <!-- heart seal -->
+    <path d="M512 636 c-16 -22 -52 -10 -52 18 c0 22 34 40 52 56 c18 -16 52 -34 52 -56 c0 -28 -36 -40 -52 -18 Z" fill="#ff6b81"/>
+    <!-- little fangs gripping the top edge -->
+    <path d="M470 512 L488 512 L479 536 Z" fill="#ffffff"/>
+    <path d="M536 512 L554 512 L545 536 Z" fill="#ffffff"/>
+    <!-- mouth grip line -->
+    <path d="M470 512 H554" stroke="#3a2417" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>
