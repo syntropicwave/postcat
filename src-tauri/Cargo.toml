@@ -67,3 +67,8 @@ tiny_http = "0.12"
 unwrap_used = "warn"
 expect_used = "warn"
 
+# Lighter debug info makes linking noticeably faster on Windows while still
+# giving usable panic backtraces during development.
+[profile.dev]
+debug = "line-tables-only"
+

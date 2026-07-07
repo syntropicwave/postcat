@@ -946,8 +946,18 @@ fn host_alias_delete(store: tauri::State<'_, Store>, id: i64) -> Result<(), Stri
     host_aliases::delete(&store, id).map_err(|e| e.to_string())
 }
 
+/// Base directory for all app data. Overridable with the `POSTCAT_DATA_DIR`
+/// environment variable so dev/test runs use a throwaway directory instead of
+/// the real user profile.
+fn data_dir(app: &tauri::AppHandle) -> Result<PathBuf, tauri::Error> {
+    match std::env::var("POSTCAT_DATA_DIR") {
+        Ok(dir) if !dir.trim().is_empty() => Ok(PathBuf::from(dir)),
+        _ => app.path().app_data_dir(),
+    }
+}
+
 fn db_path(app: &tauri::AppHandle) -> Result<PathBuf, tauri::Error> {
-    Ok(app.path().app_data_dir()?.join("postcat.db"))
+    Ok(data_dir(app)?.join("postcat.db"))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -970,7 +980,7 @@ pub fn run() {
             let store = Store::open(&path)?;
             tracing::info!(db = %path.display(), "store opened");
             app.manage(store);
-            let cookie_path = app.path().app_data_dir()?.join("cookies.json");
+            let cookie_path = data_dir(app.handle())?.join("cookies.json");
             app.manage(cookies::Cookies::load(&cookie_path));
             app.manage(InflightRequests::default());
             app.manage(RunnerCancels::default());
