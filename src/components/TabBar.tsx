@@ -8,6 +8,7 @@ import {
 } from "../state/hostAliases";
 import { HostChip } from "./HostChip";
 import { UrlDisplay } from "./UrlDisplay";
+import { Icon } from "./Icon";
 
 interface Cell {
   tab: Tab;
@@ -144,7 +145,7 @@ export function TabBar() {
         title="New request (Ctrl+T)"
         onClick={() => newTab()}
       >
-        +
+        <Icon name="plus" size={17} />
       </button>
 
       {menu && (

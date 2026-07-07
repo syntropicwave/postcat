@@ -513,8 +513,6 @@ textarea:focus-visible {
   align-self: stretch;
   width: 40px;
   padding: 0;
-  font-size: 21px;
-  line-height: 1;
   color: var(--text-dim);
 }
 
@@ -557,8 +555,14 @@ textarea:focus-visible {
 }
 
 .tab-group .tab {
-  padding-left: 6px;
   border-right-color: color-mix(in srgb, var(--group-color) 30%, var(--border));
+}
+
+/* Only the first tab hugs the alias chip (keeps the chip↔method gap tight);
+   the rest keep the standard left padding so they line up with standalone
+   tabs instead of looking cramped. */
+.tab-group .tab-group-label + .tab {
+  padding-left: 6px;
 }
 
 .tab-group .tab:last-child {
