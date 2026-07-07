@@ -460,15 +460,18 @@ textarea:focus-visible {
 }
 
 /* Close button: sits over the method badge (same lead position), revealed on
-   hover. Absolute so it never affects the tab's layout. */
+   hover. Absolute so it never affects the tab's layout. top/bottom:0 + centre
+   both axes; the SVG is a block so no baseline gap throws off the vertical
+   centring. */
 .tab-x {
   position: absolute;
-  left: 8px;
+  left: 4px;
   top: 0;
   bottom: 0;
   display: none;
   align-items: center;
-  padding: 0 2px;
+  justify-content: center;
+  width: 22px;
   color: var(--text-dim);
 }
 
@@ -480,12 +483,26 @@ textarea:focus-visible {
   color: var(--server-error);
 }
 
-/* The overlay's mirrored × (visual only — the click passes through to the real
-   .tab-x underneath). A normal flex child so it fills the lead slot. */
-.tab-x-peek {
+/* The overlay's × — the only interactive part of the (click-through) overlay,
+   so it highlights on hover and closes directly. */
+.tab-peek-x {
+  pointer-events: auto;
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 22px;
+  align-self: stretch;
+  margin: 0 -6px 0 -4px;
   color: var(--text-dim);
+}
+
+.tab-peek-x:hover {
+  color: var(--server-error);
+}
+
+.tab-x svg,
+.tab-peek-x svg {
+  display: block;
 }
 
 .tab-new {

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTabs } from "../state/tabs";
 import type { Tab } from "../state/tabs";
@@ -74,6 +74,20 @@ export function TabBar() {
   } | null>(null);
   // Only the hovered tab whose title is actually clipped gets a peek overlay.
   const [peek, setPeek] = useState<Peek | null>(null);
+  // Hover-bridge: the overlay body is click-through, but its × is interactive.
+  // Moving from the tab onto the × briefly "leaves" the tab, so defer clearing
+  // the overlay and cancel that if the × (or the tab again) is entered.
+  const clearTimer = useRef<number | null>(null);
+  const cancelClear = () => {
+    if (clearTimer.current !== null) {
+      clearTimeout(clearTimer.current);
+      clearTimer.current = null;
+    }
+  };
+  const scheduleClear = () => {
+    cancelClear();
+    clearTimer.current = window.setTimeout(() => setPeek(null), 90);
+  };
 
   // Group runs of adjacent tabs that share the same host alias.
   const groups: Group[] = [];
@@ -146,8 +160,11 @@ export function TabBar() {
             : undefined
         }
         onClick={() => setActive(tab.id)}
-        onMouseEnter={(e) => onTabEnter(e, tab, m, grouped, groupColor)}
-        onMouseLeave={() => setPeek((p) => (p && p.id === tab.id ? null : p))}
+        onMouseEnter={(e) => {
+          cancelClear();
+          onTabEnter(e, tab, m, grouped, groupColor);
+        }}
+        onMouseLeave={scheduleClear}
         onAuxClick={(e) => {
           if (e.button === 1) {
             e.preventDefault();
@@ -171,7 +188,7 @@ export function TabBar() {
             closeTab(tab.id);
           }}
         >
-          <Icon name="x" size={13} />
+          <Icon name="x" size={15} />
         </button>
         <span className="tab-title">
           {tabTitle(tab, m, grouped)}
@@ -182,7 +199,13 @@ export function TabBar() {
   };
 
   return (
-    <div className="tab-bar" onScroll={() => setPeek(null)}>
+    <div
+      className="tab-bar"
+      onScroll={() => {
+        cancelClear();
+        setPeek(null);
+      }}
+    >
       {groups.map((g, gi) => {
         const groupColor = g.match?.alias.color || "var(--accent)";
         return g.key !== null && g.match && g.cells.length >= 2 ? (
@@ -236,7 +259,6 @@ export function TabBar() {
         createPortal(
           <div
             className="tab-peek"
-            aria-hidden="true"
             style={{
               left: peek.left,
               top: peek.top,
@@ -246,12 +268,24 @@ export function TabBar() {
               boxShadow: peek.boxShadow,
             }}
           >
-            {/* Mirror the tab's hover state: show the close × in the lead
-                slot. The overlay is click-through, so clicking it lands on the
-                real close button on the tab underneath (same position). */}
-            <span className="tab-x-peek">
-              <Icon name="x" size={13} />
-            </span>
+            {/* The overlay body is click-through (navigation passes to the tabs
+                underneath); only this × is interactive, so it highlights and
+                closes directly. The hover-bridge keeps the overlay alive while
+                the pointer is on it. */}
+            <button
+              className="tab-peek-x"
+              title="Close tab"
+              onMouseEnter={cancelClear}
+              onMouseLeave={scheduleClear}
+              onClick={(e) => {
+                e.stopPropagation();
+                cancelClear();
+                closeTab(peek.id);
+                setPeek(null);
+              }}
+            >
+              <Icon name="x" size={15} />
+            </button>
             <span className="tab-peek-title">
               {peek.title}
               {peek.dirty}
