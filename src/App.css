@@ -308,17 +308,6 @@ textarea:focus-visible {
   color: var(--text-dim);
 }
 
-.history-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 .history-item:hover {
   background: var(--bg-hover);
 }
@@ -326,12 +315,9 @@ textarea:focus-visible {
 .hist-method {
   font-weight: 700;
   font-size: 10px;
-  width: 42px;
-  flex-shrink: 0;
 }
 
 .hist-url {
-  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1000,11 +986,19 @@ textarea:focus-visible {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
+/* Fixed columns so method / path / status / time line up down the list:
+   the start of each status (and each time) sits under the one above it. */
 .history-item-main {
-  display: flex;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 32px 52px;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   white-space: nowrap;
+}
+
+.history-item-main .hist-status,
+.history-item-main .hist-time {
+  text-align: left;
 }
 
 .hist-label {

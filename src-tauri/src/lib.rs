@@ -973,6 +973,18 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_decorum::init())
+        // Remembers window size/position/maximized/fullscreen across launches.
+        // Exclude DECORATIONS/VISIBLE — decorum owns the (undecorated) chrome.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED
+                        | tauri_plugin_window_state::StateFlags::FULLSCREEN,
+                )
+                .build(),
+        )
         .setup(|app| {
             let path = db_path(app.handle())?;
             if let Some(dir) = path.parent() {

@@ -15,6 +15,7 @@
     "core:window:allow-set-focus",
     "opener:default",
     "dialog:default",
-    "decorum:default"
+    "decorum:default",
+    "window-state:default"
   ]
 }
