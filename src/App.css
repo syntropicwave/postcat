@@ -419,11 +419,6 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
-/* Let grouped tabs shrink too. */
-.tab-group {
-  min-width: 0;
-}
-
 /* Overflow chevron (left) — opens the all-tabs list. */
 .tab-overflow {
   display: flex;
