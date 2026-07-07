@@ -9,6 +9,8 @@ interface Props {
    * matches, the matched prefix collapses into the chip regardless.
    */
   scheme?: "hide" | "dim" | "show";
+  /** Drop the leading "/" after the chip (compact tab titles). */
+  dropLeadingSlash?: boolean;
   className?: string;
 }
 
@@ -19,7 +21,12 @@ const SCHEME_RE = /^[a-z0-9+.-]+:\/\//i;
  * chunk) collapsed to a coloured chip. Read-only — used in history, tabs and
  * the (blurred) address bar.
  */
-export function UrlDisplay({ url, scheme = "dim", className }: Props) {
+export function UrlDisplay({
+  url,
+  scheme = "dim",
+  dropLeadingSlash = false,
+  className,
+}: Props) {
   const m = useUrlMatch(url);
 
   if (!m) {
@@ -29,7 +36,8 @@ export function UrlDisplay({ url, scheme = "dim", className }: Props) {
   }
 
   const pre = url.slice(0, m.start);
-  const post = url.slice(m.end);
+  let post = url.slice(m.end);
+  if (dropLeadingSlash) post = post.replace(/^\//, "");
   const preText = scheme === "hide" ? pre.replace(SCHEME_RE, "") : pre;
 
   return (

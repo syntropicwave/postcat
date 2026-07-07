@@ -69,9 +69,9 @@ export function TabBar() {
         {tab.itemName ? (
           tab.itemName
         ) : grouped && m ? (
-          tab.url.slice(m.end) || "/"
+          tab.url.slice(m.end).replace(/^\//, "") || "/"
         ) : (
-          <UrlDisplay url={tab.url} scheme="hide" />
+          <UrlDisplay url={tab.url} scheme="hide" dropLeadingSlash />
         )}
         {tab.dirty && tab.itemId ? " •" : ""}
       </span>
