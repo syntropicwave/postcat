@@ -116,8 +116,11 @@ export function TabBar() {
   const visibleTabs = tabs.slice(start, start + shown);
   const overflowed = shown < count;
 
-  // Fit as many tabs as possible: shrink the window while it overflows, grow it
-  // when there's comfortable slack. Runs synchronously before paint.
+  // Fit as many tabs as possible. Runs synchronously before paint.
+  //   shrink: the tab-bar clips (its content, shrunk to min, still overflows).
+  //   grow:   the tab-bar is only as wide as its content (flex: 0 1 auto), so
+  //           the real free space is in the sibling drag region — if a whole
+  //           min-width tab fits there, show one (or more) more.
   useLayoutEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
@@ -128,9 +131,11 @@ export function TabBar() {
           Math.max(1, shown - Math.max(1, Math.round(over / MIN_TAB))),
         );
     } else if (shown < count) {
-      const slack = bar.clientWidth - bar.scrollWidth;
-      if (slack >= MIN_TAB + 24)
-        setCapacity(shown + Math.max(1, Math.floor(slack / MIN_TAB)));
+      const drag =
+        bar.parentElement?.querySelector<HTMLElement>(".titlebar-drag");
+      const free = drag?.clientWidth ?? 0;
+      if (free >= MIN_TAB)
+        setCapacity(shown + Math.max(1, Math.floor(free / MIN_TAB)));
     }
   }, [shown, count]);
 
