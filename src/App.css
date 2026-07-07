@@ -1693,20 +1693,87 @@ textarea:focus-visible {
 /* ---------- Env bar / actions (in the title bar) ---------- */
 
 .env-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+}
+
+/* Compact trigger: braces icon + active env name + chevron. */
+.env-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  max-width: 170px;
+}
+
+.env-trigger:hover,
+.env-trigger.active {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.env-trigger-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.env-trigger svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.env-popover {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  z-index: 200;
+  min-width: 200px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+.env-opt {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 8px;
-  border-left: 1px solid var(--border);
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text);
 }
 
-.env-select {
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  font-size: 12px;
-  max-width: 160px;
+.env-opt:hover {
+  background: var(--bg-hover);
+}
+
+.env-opt.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.env-manage {
+  color: var(--text-dim);
+}
+
+.env-popover-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 2px;
 }
 
 /* ---------- Modals ---------- */

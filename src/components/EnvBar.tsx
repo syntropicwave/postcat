@@ -14,10 +14,16 @@ import {
 import type { Environment, Variable, VarScope } from "../types";
 import { Icon } from "./Icon";
 
-/** Environment switcher + manager entry point, shown in the tab bar. */
+/**
+ * Compact environment control: one small button showing the active
+ * environment, opening a popover to switch environments and open the full
+ * variables manager. Collapses what used to be an always-visible wide selector
+ * plus a separate button.
+ */
 export function EnvBar() {
   const [envs, setEnvs] = useState<Environment[]>([]);
   const [managerOpen, setManagerOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
@@ -26,32 +32,86 @@ export function EnvBar() {
 
   const active = envs.find((e) => e.is_active);
 
+  const pick = async (id: number | null) => {
+    await envSetActive(id);
+    setVersion((v) => v + 1);
+    setOpen(false);
+  };
+
   return (
     <div className="env-bar">
-      <select
-        className="env-select"
-        value={active?.id ?? ""}
-        title="Active environment"
-        onChange={async (e) => {
-          await envSetActive(e.target.value ? Number(e.target.value) : null);
-          setVersion((v) => v + 1);
-        }}
-      >
-        <option value="">No environment</option>
-        {envs.map((e) => (
-          <option key={e.id} value={e.id}>
-            {e.name}
-          </option>
-        ))}
-      </select>
       <button
-        className="icon-btn"
-        title="Environments & variables"
-        onClick={() => setManagerOpen(true)}
+        className={`env-trigger${open ? " active" : ""}`}
+        title="Environment & variables"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={() => setOpen((v) => !v)}
       >
-        <Icon name="braces" />
+        <Icon name="braces" size={15} />
+        <span className="env-trigger-name">{active?.name ?? "No env"}</span>
+        <Icon name="chevron-down" size={12} />
       </button>
+      {open && (
+        <EnvPopover
+          envs={envs}
+          activeId={active?.id ?? null}
+          onPick={pick}
+          onManage={() => {
+            setOpen(false);
+            setManagerOpen(true);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
       {managerOpen && <EnvManager onClose={() => setManagerOpen(false)} />}
+    </div>
+  );
+}
+
+function EnvPopover({
+  envs,
+  activeId,
+  onPick,
+  onManage,
+  onClose,
+}: {
+  envs: Environment[];
+  activeId: number | null;
+  onPick: (id: number | null) => void;
+  onManage: () => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const off = () => onClose();
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("mousedown", off);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", off);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="env-popover" onMouseDown={(e) => e.stopPropagation()}>
+      <button
+        className={`env-opt${activeId === null ? " active" : ""}`}
+        onClick={() => onPick(null)}
+      >
+        No environment
+      </button>
+      {envs.map((e) => (
+        <button
+          key={e.id}
+          className={`env-opt${activeId === e.id ? " active" : ""}`}
+          onClick={() => onPick(e.id)}
+        >
+          {e.name}
+        </button>
+      ))}
+      <div className="env-popover-sep" />
+      <button className="env-opt env-manage" onClick={onManage}>
+        <Icon name="braces" size={13} /> Manage variables…
+      </button>
     </div>
   );
 }
