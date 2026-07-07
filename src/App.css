@@ -133,7 +133,9 @@ textarea:focus-visible {
 }
 
 .titlebar .tab-bar {
-  flex: 0 1 auto;
+  /* Fill the available width so the tabs stretch to share it (a small drag
+     strip is kept after them). */
+  flex: 1 1 auto;
   min-width: 0;
   border-bottom: none;
   align-self: stretch;
@@ -154,7 +156,8 @@ textarea:focus-visible {
 }
 
 .titlebar-drag {
-  flex: 1 1 40px;
+  /* A fixed drag strip; the tab-bar takes the rest of the width. */
+  flex: 0 0 40px;
   align-self: stretch;
   min-width: 24px;
   -webkit-user-select: none;
@@ -412,10 +415,11 @@ textarea:focus-visible {
   padding: 8px 10px;
   border-right: 1px solid var(--border);
   cursor: pointer;
-  /* Shrink to share the row; collapse into the overflow list past the min. */
-  flex: 0 1 auto;
+  /* Grow to share the row (capped so one tab isn't the whole bar); shrink to
+     the min, then collapse into the overflow list. */
+  flex: 1 1 0;
   min-width: 90px;
-  max-width: 220px;
+  max-width: 260px;
   white-space: nowrap;
 }
 

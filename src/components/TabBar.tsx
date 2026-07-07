@@ -116,10 +116,10 @@ export function TabBar() {
   const overflowed = shown < count;
 
   // Fit as many tabs as possible. Runs synchronously before paint.
-  //   shrink: the tab-bar clips (its content, shrunk to min, still overflows).
-  //   grow:   the tab-bar is only as wide as its content (flex: 0 1 auto), so
-  //           the real free space is in the sibling drag region — if a whole
-  //           min-width tab fits there, show one (or more) more.
+  //   shrink: the tabs, crammed to their min, still overflow the bar.
+  //   grow:   the visible tabs (which fill the bar via flex-grow) carry more
+  //           than a whole extra tab's width above their minimum, so another
+  //           hidden tab would fit. A margin avoids flip-flopping at the edge.
   useLayoutEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
@@ -127,14 +127,17 @@ export function TabBar() {
     if (over > 1) {
       if (shown > 1)
         setCapacity(
-          Math.max(1, shown - Math.max(1, Math.round(over / MIN_TAB))),
+          Math.max(1, shown - Math.max(1, Math.ceil(over / MIN_TAB))),
         );
     } else if (shown < count) {
-      const drag =
-        bar.parentElement?.querySelector<HTMLElement>(".titlebar-drag");
-      const free = drag?.clientWidth ?? 0;
-      if (free >= MIN_TAB)
-        setCapacity(shown + Math.max(1, Math.floor(free / MIN_TAB)));
+      let tabsWidth = 0;
+      const els = bar.querySelectorAll<HTMLElement>(".tab");
+      els.forEach((t) => {
+        tabsWidth += t.offsetWidth;
+      });
+      const slack = tabsWidth - els.length * MIN_TAB;
+      if (slack >= MIN_TAB + 40)
+        setCapacity(shown + Math.max(1, Math.floor(slack / MIN_TAB)));
     }
   }, [shown, count]);
 
@@ -282,7 +285,14 @@ export function TabBar() {
           <div
             key={gkey}
             className="tab-group"
-            style={{ "--group-color": groupColor } as React.CSSProperties}
+            style={
+              {
+                "--group-color": groupColor,
+                // Grow proportionally to how many tabs it holds so grouped and
+                // standalone tabs end up roughly the same width.
+                flex: `${g.cells.length} 1 0`,
+              } as React.CSSProperties
+            }
           >
             <span className="tab-group-label" title={g.match.alias.host}>
               <HostChip
