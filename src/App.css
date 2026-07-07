@@ -173,6 +173,12 @@ textarea:focus-visible {
   color: var(--text);
 }
 
+/* Fill the title-bar's content height (34px bar − 1px divider = 33px) so the
+   hover highlight is flush with the divider — no 1px gap under the button. */
+[data-tauri-decorum-tb] button {
+  height: 33px !important;
+}
+
 /* decorum hard-codes a near-black hover tint for min/max that's invisible on
    the dark theme — override it (and the close red) with theme-aware colours.
    !important beats the plugin's inline hover styles. */
@@ -427,6 +433,69 @@ textarea:focus-visible {
 
 .tab-new:hover {
   color: var(--accent);
+}
+
+/* Colour-code a standalone aliased tab with a top strip in its host colour. */
+.tab-aliased {
+  box-shadow: inset 0 2px 0 var(--tab-color);
+}
+
+.tab-aliased.active {
+  box-shadow:
+    inset 0 2px 0 var(--tab-color),
+    inset 0 -2px 0 var(--accent);
+}
+
+/* A run of tabs sharing one host alias, bracketed together. */
+.tab-group {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  position: relative;
+  background: color-mix(in srgb, var(--group-color) 10%, transparent);
+  box-shadow: inset 0 2px 0 var(--group-color);
+  border-right: 1px solid var(--border);
+}
+
+.tab-group-label {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 6px 0 8px;
+}
+
+.tab-group .tab {
+  border-right-color: color-mix(in srgb, var(--group-color) 30%, var(--border));
+}
+
+.tab-group .tab:last-child {
+  border-right: none;
+}
+
+/* Tab context menu (right-click). */
+.tab-menu {
+  position: fixed;
+  z-index: 300;
+  min-width: 170px;
+  padding: 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-menu button {
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.tab-menu button:hover {
+  background: var(--bg-hover);
 }
 
 /* ---------- Request editor ---------- */

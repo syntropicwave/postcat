@@ -60,6 +60,7 @@ interface TabsState {
   collectionsVersion: number;
   bumpCollections: () => void;
   newTab: (partial?: Partial<Tab>) => string;
+  duplicateTab: (id: string) => void;
   closeTab: (id: string) => void;
   setActive: (id: string) => void;
   updateTab: (id: string, patch: Partial<Tab>) => void;
@@ -191,6 +192,37 @@ export const useTabs = create<TabsState>((set, get) => ({
     const tab = makeTab(partial);
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }));
     return tab.id;
+  },
+
+  duplicateTab: (id) => {
+    set((s) => {
+      const idx = s.tabs.findIndex((t) => t.id === id);
+      const src = s.tabs[idx];
+      if (!src) return s;
+      // Clone the request, not the response/session state. Unbind from the
+      // saved item so it's a fresh draft; keep the collection scope.
+      const copy = makeTab({
+        method: src.method,
+        url: src.url,
+        params: src.params.map((p) => ({ ...p })),
+        headers: src.headers.map((h) => ({ ...h })),
+        body: structuredClone(src.body),
+        settings: { ...src.settings },
+        auth: structuredClone(src.auth),
+        pathVars: { ...src.pathVars },
+        preRequestScript: src.preRequestScript,
+        testScript: src.testScript,
+        description: src.description,
+        collectionId: src.collectionId,
+        itemId: null,
+        itemName: src.itemName ? `${src.itemName} copy` : null,
+        dirty: true,
+      });
+      // Insert right after the source so same-alias tabs stay adjacent.
+      const tabs = [...s.tabs];
+      tabs.splice(idx + 1, 0, copy);
+      return { tabs, activeTabId: copy.id };
+    });
   },
 
   closeTab: (id) => {

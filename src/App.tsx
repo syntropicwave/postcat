@@ -105,6 +105,9 @@ function App() {
       } else if (e.key.toLowerCase() === "w") {
         e.preventDefault();
         closeTab(id);
+      } else if (e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        useTabs.getState().duplicateTab(id);
       } else if (e.key.toLowerCase() === "s") {
         e.preventDefault();
         if (tab) {
