@@ -431,66 +431,22 @@ textarea:focus-visible {
   font-size: 12px;
 }
 
-/* Hover reveal for a TRUNCATED tab only (rendered from JS): the full title as
-   an overlay that grows to the right over the following tabs, never shifting
-   the layout and never narrower than the tab itself. It reproduces the tab's
-   own decorations (group bar, active underline, alias strip) so nothing
-   flickers or disappears underneath it. */
+/* Hover reveal for a TRUNCATED tab only: rendered in a portal on <body> as a
+   fixed overlay positioned from the tab's rect, so it escapes the tab-bar's
+   overflow clip (it can grow to any width the address needs) and never touches
+   the neighbouring tabs' separators. Position, size, background and the
+   decoration bars are all set inline from JS (see tabDeco). */
 .tab-peek {
+  position: fixed;
   display: flex;
-  position: absolute;
-  left: -1px;
-  top: -1px;
-  height: calc(100% + 2px);
-  min-width: calc(100% + 2px);
-  width: max-content;
   box-sizing: border-box;
+  width: max-content;
   align-items: center;
   gap: 6px;
   padding: 0 10px;
-  --peek-drop: 0 8px 20px rgba(0, 0, 0, 0.32);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  box-shadow: var(--peek-drop);
-  z-index: 60;
+  z-index: 150;
   white-space: nowrap;
   pointer-events: none;
-}
-
-.tab.active .tab-peek {
-  background: var(--bg);
-  box-shadow:
-    inset 0 -2px 0 var(--accent),
-    var(--peek-drop);
-}
-
-.tab-aliased .tab-peek {
-  box-shadow:
-    inset 0 2px 0 var(--tab-color),
-    var(--peek-drop);
-}
-
-.tab-aliased.active .tab-peek {
-  background: var(--bg);
-  box-shadow:
-    inset 0 2px 0 var(--tab-color),
-    inset 0 -2px 0 var(--accent),
-    var(--peek-drop);
-}
-
-.tab-group .tab .tab-peek {
-  background: color-mix(in srgb, var(--group-color) 10%, var(--bg-panel));
-  box-shadow:
-    inset 0 2px 0 var(--group-color),
-    var(--peek-drop);
-}
-
-.tab-group .tab.active .tab-peek {
-  background: color-mix(in srgb, var(--group-color) 8%, var(--bg));
-  box-shadow:
-    inset 0 2px 0 var(--group-color),
-    inset 0 -2px 0 var(--accent),
-    var(--peek-drop);
 }
 
 .tab-peek-title {
