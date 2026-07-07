@@ -56,6 +56,13 @@ function App() {
     "ui.reqWidth",
     null,
   );
+  // "Focus response": collapse the request params to just the address bar and
+  // give the response the freed vertical space. Only actually collapses when
+  // there's response content, so it can never hide the params with no way back.
+  const [responseFocus, setResponseFocus] = usePersistentState(
+    "ui.responseFocus",
+    false,
+  );
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   const clamp = (v: number, lo: number, hi: number) =>
@@ -206,39 +213,58 @@ function App() {
           onReset={() => setSidebarWidth(320)}
         />
         <main className="main">
-          {active && (
-            <div
-              className={`workspace ${horizontal ? "horizontal" : ""}`}
-              ref={workspaceRef}
-              style={
-                {
-                  ...(reqHeight != null ? { "--req-h": `${reqHeight}px` } : {}),
-                  ...(reqWidth != null ? { "--req-w": `${reqWidth}px` } : {}),
-                } as React.CSSProperties
-              }
-            >
-              <RequestEditor tab={active} />
-              <ResizeHandle
-                axis={horizontal ? "x" : "y"}
-                onDelta={onReqDelta}
-                onReset={() =>
-                  horizontal ? setReqWidth(null) : setReqHeight(null)
-                }
-              />
-              {isWsUrl(active.url) ? (
-                <WsPanel tab={active} />
-              ) : (
-                <ResponseViewer
-                  response={active.response}
-                  error={active.responseError}
-                  sending={active.sending}
-                  streamText={active.streamText}
-                  collectionId={active.collectionId}
-                  onDiffPrevious={diffPrevious}
-                />
-              )}
-            </div>
-          )}
+          {active &&
+            (() => {
+              const hasResponseContent =
+                !isWsUrl(active.url) &&
+                !!(
+                  active.response ||
+                  active.responseError ||
+                  active.sending ||
+                  active.streamText
+                );
+              return (
+                <div
+                  className={`workspace ${horizontal ? "horizontal" : ""}${
+                    responseFocus && hasResponseContent ? " response-focus" : ""
+                  }`}
+                  ref={workspaceRef}
+                  style={
+                    {
+                      ...(reqHeight != null
+                        ? { "--req-h": `${reqHeight}px` }
+                        : {}),
+                      ...(reqWidth != null
+                        ? { "--req-w": `${reqWidth}px` }
+                        : {}),
+                    } as React.CSSProperties
+                  }
+                >
+                  <RequestEditor tab={active} />
+                  <ResizeHandle
+                    axis={horizontal ? "x" : "y"}
+                    onDelta={onReqDelta}
+                    onReset={() =>
+                      horizontal ? setReqWidth(null) : setReqHeight(null)
+                    }
+                  />
+                  {isWsUrl(active.url) ? (
+                    <WsPanel tab={active} />
+                  ) : (
+                    <ResponseViewer
+                      response={active.response}
+                      error={active.responseError}
+                      sending={active.sending}
+                      streamText={active.streamText}
+                      collectionId={active.collectionId}
+                      onDiffPrevious={diffPrevious}
+                      focus={responseFocus}
+                      onToggleFocus={() => setResponseFocus((v) => !v)}
+                    />
+                  )}
+                </div>
+              );
+            })()}
         </main>
       </div>
       {saveTab && <SaveDialog tab={saveTab} onClose={() => setSaveFor(null)} />}

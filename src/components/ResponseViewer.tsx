@@ -23,6 +23,9 @@ interface Props {
   collectionId?: number | null;
   /** Opens a diff against the previous response for this endpoint. */
   onDiffPrevious?: () => void;
+  /** "Focus response" toggle: collapse the request params to the address bar. */
+  focus?: boolean;
+  onToggleFocus?: () => void;
 }
 
 export function ResponseViewer({
@@ -32,6 +35,8 @@ export function ResponseViewer({
   streamText,
   collectionId = null,
   onDiffPrevious,
+  focus = false,
+  onToggleFocus,
 }: Props) {
   const wrapDefault = useAppSettings((s) => s.settings?.wrap_response ?? true);
   const [view, setView] = useState<View>("pretty");
@@ -163,6 +168,15 @@ export function ResponseViewer({
             >
               save
             </button>
+            {onToggleFocus && (
+              <button
+                className={`tool-with-icon${focus ? " active" : ""}`}
+                title="Focus response — hide request params, expand vertically"
+                onClick={onToggleFocus}
+              >
+                <Icon name={focus ? "arrow-in" : "arrow-out"} size={13} /> focus
+              </button>
+            )}
           </span>
         </span>
       </div>

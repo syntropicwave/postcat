@@ -767,6 +767,25 @@ textarea:focus-visible {
   border-right: 1px solid var(--border);
 }
 
+/* "Focus response": collapse the request pane to just its address bar and let
+   the response take the freed space. The divider is hidden while focused. */
+.workspace.response-focus .request-editor {
+  height: auto;
+  min-height: 0;
+  width: auto;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.workspace.response-focus .request-editor .section-tabs,
+.workspace.response-focus .request-editor .section-content {
+  display: none;
+}
+
+.workspace.response-focus > .resize-handle {
+  display: none;
+}
+
 .url-bar {
   display: flex;
   gap: 8px;
