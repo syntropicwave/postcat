@@ -1692,32 +1692,39 @@ textarea:focus-visible {
 
 /* ---------- Env bar / actions (in the title bar) ---------- */
 
+/* Environment control lives in a footer at the bottom of the sidebar. */
 .env-bar {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 0 4px;
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
 }
 
-/* Compact trigger: braces icon + active env name + chevron. */
+/* Full-width trigger: braces icon + active env name + chevron. */
 .env-trigger {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 24px;
-  padding: 0 6px;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: var(--text-dim);
-  max-width: 170px;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .env-trigger:hover,
 .env-trigger.active {
   background: var(--bg-hover);
-  color: var(--text);
+  border-color: var(--accent);
 }
 
 .env-trigger-name {
+  flex: 1;
+  text-align: left;
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1729,12 +1736,13 @@ textarea:focus-visible {
   flex-shrink: 0;
 }
 
+/* Opens upward (it sits at the bottom of the sidebar). */
 .env-popover {
   position: absolute;
-  top: calc(100% + 2px);
-  right: 0;
+  bottom: calc(100% + 2px);
+  left: 8px;
+  right: 8px;
   z-index: 200;
-  min-width: 200px;
   max-height: 60vh;
   overflow-y: auto;
   padding: 4px;

@@ -168,7 +168,6 @@ function App() {
       <div className="titlebar">
         <TabBar />
         <div className="titlebar-drag" data-tauri-drag-region="" />
-        <EnvBar />
         <div className="top-actions">
           <button
             className="icon-btn"
@@ -217,6 +216,7 @@ function App() {
             </button>
           </div>
           {sidebarTab === "history" ? <HistorySidebar /> : <CollectionsPanel />}
+          <EnvBar />
         </div>
         <ResizeHandle
           axis="x"
