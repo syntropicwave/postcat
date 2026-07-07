@@ -37,11 +37,10 @@ interface Peek {
   boxShadow: string;
 }
 
-const PEEK_DROP = "0 8px 20px rgba(0, 0, 0, 0.32)";
-
 // Reproduce the tab's own look (background + decoration bars) as inline styles,
 // since the portal is detached from the .tab-group / .active ancestors that the
-// CSS would otherwise match. CSS vars still resolve against :root.
+// CSS would otherwise match. CSS vars still resolve against :root. A thin border
+// (not a drop shadow) delimits the overlay from the tabs underneath.
 function tabDeco(
   active: boolean,
   grouped: boolean,
@@ -59,7 +58,9 @@ function tabDeco(
   const shadows: string[] = [];
   if (topColor) shadows.push(`inset 0 2px 0 ${topColor}`);
   if (active) shadows.push("inset 0 -2px 0 var(--accent)");
-  shadows.push("inset -1px 0 0 var(--border)", PEEK_DROP);
+  // Just a right edge to cap the overlay — no drop shadow. Top/bottom align
+  // with the bar and the left edge sits on the real tab separator.
+  shadows.push("inset -1px 0 0 var(--border)");
   return { background, boxShadow: shadows.join(", ") };
 }
 
