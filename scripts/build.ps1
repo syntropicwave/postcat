@@ -44,6 +44,19 @@ function Is-Locked([string]$p) {
   catch { return $true }
 }
 
+# Copy src → dst, then verify by hash. The OS can hold the handle for a beat
+# after the app window closes, so a plain Copy-Item may silently no-op. Give a
+# short grace pause, then retry until the destination actually matches.
+function Copy-Verified([string]$src, [string]$dst) {
+  Start-Sleep -Milliseconds 500
+  for ($i = 0; $i -lt 6; $i++) {
+    try { Copy-Item $src $dst -Force -ErrorAction Stop } catch { Start-Sleep -Seconds 1; continue }
+    if ((Get-FileHash $src).Hash -eq (Get-FileHash $dst).Hash) { return $true }
+    Start-Sleep -Seconds 1
+  }
+  return $false
+}
+
 function Get-RunningPid {
   if (-not (Test-Path $pidFile)) { return $null }
   $p = Get-Content $pidFile -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -59,8 +72,10 @@ function Get-Phase {
   $hasDone = $txt -match "__BUILD_DONE__ (\d+)"
   $code = if ($hasDone) { [int]$Matches[1] } else { -1 }
   $hasDeploy = $txt -match "__DEPLOY_DONE__"
+  $deployFail = $txt -match "__DEPLOY_FAIL__"
   if ($running) { if (-not $hasDone) { return "building" } else { return "deploying" } }
   if ($hasDeploy) { return "deployed" }
+  if ($deployFail) { return "deployfailed" }
   if ($hasDone) { if ($code -eq 0) { return "built" } else { return "failed" } }
   return "interrupted"
 }
@@ -90,6 +105,7 @@ function Do-Status {
       Show-Artifacts
     }
     "deployed" { Write-Host "STATUS: deployed ✓" -ForegroundColor Green; Show-Artifacts }
+    "deployfailed" { Write-Host "STATUS: built OK but deploy FAILED — run './scripts/build.ps1 deploy' with the app closed." -ForegroundColor Red; Show-Artifacts }
     "built" { Write-Host "STATUS: built OK (not deployed)" -ForegroundColor Green; Show-Artifacts }
     "failed" { Write-Host "STATUS: FAILED" -ForegroundColor Red; Write-Host "--- last $Tail log lines ---"; Show-Tail $Tail }
     "interrupted" { Write-Host "STATUS: stopped (interrupted)" -ForegroundColor Gray }
@@ -122,8 +138,17 @@ if ($code -eq 0) {
     if (-not $warned) { ("__DEPLOY_WAIT__ " + (Get-Date -Format o)) | Out-File -Append $Log; $warned = $true }
     Start-Sleep -Seconds 2
   }
-  Copy-Item $ExePath $DeployExe -Force
-  ("__DEPLOY_DONE__ " + $DeployExe + " " + (Get-Date -Format o)) | Out-File -Append $Log
+  # The handle lingers briefly after the window closes — pause, then copy and
+  # verify by hash, retrying so we never log DONE on a silent no-op.
+  Start-Sleep -Milliseconds 500
+  $ok = $false
+  for ($i = 0; $i -lt 6; $i++) {
+    try { Copy-Item $ExePath $DeployExe -Force -ErrorAction Stop } catch { Start-Sleep -Seconds 1; continue }
+    if ((Get-FileHash $ExePath).Hash -eq (Get-FileHash $DeployExe).Hash) { $ok = $true; break }
+    Start-Sleep -Seconds 1
+  }
+  if ($ok) { ("__DEPLOY_DONE__ " + $DeployExe + " " + (Get-Date -Format o)) | Out-File -Append $Log }
+  else { ("__DEPLOY_FAIL__ " + $DeployExe + " " + (Get-Date -Format o)) | Out-File -Append $Log }
 }
 '@
 
@@ -154,8 +179,8 @@ function Do-Deploy {
   New-Item -ItemType Directory -Force -Path $appDir | Out-Null
   if (Is-Locked $deployExe) { Write-Host "app\postcat.exe is running — close it; it will be replaced." -ForegroundColor Cyan }
   while (Is-Locked $deployExe) { Start-Sleep -Seconds 1 }
-  Copy-Item $exePath $deployExe -Force
-  Write-Host "Deployed → $deployExe" -ForegroundColor Green
+  if (Copy-Verified $exePath $deployExe) { Write-Host "Deployed → $deployExe" -ForegroundColor Green }
+  else { Write-Host "Deploy FAILED — $deployExe still differs after retries (locked?)." -ForegroundColor Red }
 }
 
 function Do-Run {
