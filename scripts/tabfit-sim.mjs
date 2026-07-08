@@ -67,6 +67,44 @@ function simulateNew({ barWidth, count }) {
   return { result: stable ? "STABLE" : "LOOP", shown, capacity };
 }
 
+// --- CANDIDATE: width ceiling + shrink-only correction, reset on count/width ---
+// capacity resets to the width-based ceiling on a count/width change, then only
+// SHRINKS while the real (label-aware) content overflows. Grow never happens,
+// so it must be monotonic within a fixed (count,width). We check it terminates.
+function simulateShrinkReset({ barWidth, count, labelsOf }) {
+  const ceil = fitCapacity(barWidth);
+  let capacity = ceil;
+  let prevKey = null;
+  const seen = new Set();
+  for (let pass = 0; pass < 500; pass++) {
+    const shown = Math.max(1, Math.min(capacity, count));
+    const key = `${capacity}`;
+    // reset once per (count,width) — modeled by prevKey against the ceiling
+    const ctx = `${count}:${barWidth}`;
+    if (prevKey !== ctx) {
+      prevKey = ctx;
+      if (capacity !== ceil) {
+        capacity = ceil;
+        continue;
+      }
+    }
+    if (seen.has(key)) return { result: "LOOP", shown };
+    seen.add(key);
+
+    const hasChevron = shown < count;
+    const labels = labelsOf(shown, count);
+    const over = contentMin(shown, labels, hasChevron) - barWidth;
+    if (over > 1 && shown > 1) {
+      const next = Math.max(1, shown - Math.max(1, Math.ceil(over / MIN)));
+      if (next === capacity) return { result: "STABLE", shown, pass };
+      capacity = next;
+    } else {
+      return { result: "STABLE", shown, pass };
+    }
+  }
+  return { result: "NO-CONVERGE(500)" };
+}
+
 let failures = 0;
 const log = (ok, msg) => {
   if (!ok) failures++;
@@ -136,6 +174,38 @@ const log = (ok, msg) => {
     r.result === "STABLE",
     `NEW logic stable on the old-loop scenario (shown=${r.shown}, cap=${r.capacity})`,
   );
+}
+
+// 5) shrink-only correction converges (no loop) across many scenarios,
+//    including heavy grouping (labels up to 4).
+{
+  let allStable = true;
+  let worstClip = 0;
+  const bad = [];
+  for (let w = 200; w <= 3000; w += 11) {
+    for (const count of [1, 3, 8, 20, 60]) {
+      for (const g of [0, 1, 2, 4]) {
+        const labelsOf = (shown) => Math.min(g, Math.max(0, shown - 1));
+        const r = simulateShrinkReset({ barWidth: w, count, labelsOf });
+        if (r.result !== "STABLE") {
+          allStable = false;
+          bad.push({ w, count, g, r });
+        } else {
+          // verify the settled layout does NOT overflow (no clip)
+          const shown = r.shown;
+          const labels = labelsOf(shown, count);
+          const over = contentMin(shown, labels, shown < count) - w;
+          if (over > 1) worstClip = Math.max(worstClip, over);
+        }
+      }
+    }
+  }
+  log(allStable, `shrink-only correction converges across grouped scenarios`);
+  log(
+    worstClip <= 1,
+    `shrink-only settled layout never overflows (worst clip ${worstClip}px)`,
+  );
+  if (bad.length) console.log(bad.slice(0, 5));
 }
 
 console.log(

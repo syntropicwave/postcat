@@ -155,11 +155,13 @@ textarea:focus-visible {
   padding-bottom: 0;
 }
 
-.titlebar-drag {
-  /* A fixed drag strip; the tab-bar takes the rest of the width. */
-  flex: 0 0 40px;
+/* Trailing drag spacer inside the tab-bar: fills the space after the tabs so
+   there's no dead gap, and is the window drag handle. Grow weight 1 (tabs are
+   20), so it only soaks up whatever the tabs leave once they hit their max. */
+.tab-drag {
+  flex: 1 1 0;
+  min-width: 0;
   align-self: stretch;
-  min-width: 24px;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -416,8 +418,9 @@ textarea:focus-visible {
   border-right: 1px solid var(--border);
   cursor: pointer;
   /* Grow to share the row (capped so one tab isn't the whole bar); shrink to
-     the min, then collapse into the overflow list. */
-  flex: 1 1 0;
+     the min, then collapse into the overflow list. Grow weight 20 so tabs win
+     the space over the trailing drag spacer (weight 1). */
+  flex: 20 1 0;
   min-width: 90px;
   max-width: 260px;
   white-space: nowrap;
@@ -545,6 +548,7 @@ textarea:focus-visible {
   align-items: center;
   justify-content: center;
   align-self: stretch;
+  flex: 0 0 auto;
   width: 40px;
   padding: 0;
   color: var(--text-dim);

@@ -167,7 +167,6 @@ function App() {
     <div className="app">
       <div className="titlebar">
         <TabBar />
-        <div className="titlebar-drag" data-tauri-drag-region="" />
         <div className="top-actions">
           <button
             className="icon-btn"

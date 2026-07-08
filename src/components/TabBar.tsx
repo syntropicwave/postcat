@@ -111,6 +111,10 @@ export function TabBar() {
   // Overflow: tabs shrink via CSS; when even shrunk they don't fit, the oldest
   // collapse and a chevron on the left opens a searchable list of all tabs.
   const barRef = useRef<HTMLDivElement>(null);
+  // `capacityCeil` is a width-only upper bound (loop-free). `capacity` starts at
+  // the ceiling and is only ever SHRUNK, label-aware, until the real content
+  // stops overflowing — so the last tab and the + button are never clipped.
+  const [capacityCeil, setCapacityCeil] = useState(999);
   const [capacity, setCapacity] = useState(999);
   const [list, setList] = useState<{ x: number; y: number } | null>(null);
 
@@ -125,21 +129,41 @@ export function TabBar() {
   const visibleTabs = tabs.slice(start, start + shown);
   const overflowed = shown < count;
 
-  // Capacity is derived ONLY from the tab-bar's available width, remeasured
-  // when that width changes (window resize). It never depends on `capacity`,
-  // `count` or the tab content, so setting it cannot re-trigger the measurement
-  // — no feedback, no render loop. `shown = min(capacity, count)` then windows
-  // the tabs and the rest collapse into the chevron. (Overflow past the
-  // estimate is clipped by the bar's overflow:hidden, never a crash.)
+  // Ceiling from the tab-bar's available width only. The bar is flex: 1 1 auto,
+  // so its width is independent of tab content — setting state here can't change
+  // the width, so the measurement never re-triggers itself (no loop).
   useLayoutEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
-    const measure = () => setCapacity(fitCapacity(bar.clientWidth));
+    const measure = () => setCapacityCeil(fitCapacity(bar.clientWidth));
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(bar);
     return () => ro.disconnect();
   }, []);
+
+  // Reset to the ceiling when the ceiling or the tab count changes (a one-shot,
+  // guarded by prevKey), then SHRINK — measuring the real, label-aware overflow
+  // — until it fits. Shrink is monotonic; there is no grow branch, so it can't
+  // oscillate. Verified in scripts/tabfit-sim.mjs.
+  const prevKey = useRef("");
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const key = `${count}:${capacityCeil}`;
+    if (prevKey.current !== key) {
+      prevKey.current = key;
+      if (capacity !== capacityCeil) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setCapacity(capacityCeil);
+        return;
+      }
+    }
+    const over = bar.scrollWidth - bar.clientWidth;
+    if (over > 1 && shown > 1) {
+      setCapacity(Math.max(1, shown - Math.max(1, Math.ceil(over / MIN_TAB))));
+    }
+  }, [shown, count, capacity, capacityCeil]);
 
   // Group runs of adjacent VISIBLE tabs that share the same host alias.
   const groups: Group[] = [];
@@ -280,9 +304,10 @@ export function TabBar() {
             style={
               {
                 "--group-color": groupColor,
-                // Grow proportionally to how many tabs it holds so grouped and
-                // standalone tabs end up roughly the same width.
-                flex: `${g.cells.length} 1 0`,
+                // Grow proportionally to how many tabs it holds (×20 so the
+                // group/tabs win the space over the trailing drag spacer, which
+                // only soaks up the leftover once tabs hit their max width).
+                flex: `${g.cells.length * 20} 1 0`,
               } as React.CSSProperties
             }
           >
@@ -306,6 +331,9 @@ export function TabBar() {
       >
         <Icon name="plus" size={17} />
       </button>
+      {/* Fills the space after the tabs so there's no dead gap, and is the
+          window drag handle (the title bar has no separate drag strip). */}
+      <div className="tab-drag" data-tauri-drag-region="" />
 
       {menu && (
         <TabMenu
