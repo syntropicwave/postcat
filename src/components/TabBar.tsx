@@ -135,7 +135,12 @@ export function TabBar() {
   useLayoutEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
-    const measure = () => setCapacityCeil(fitCapacity(bar.clientWidth));
+    const measure = () => {
+      setCapacityCeil(fitCapacity(bar.clientWidth));
+      // The peek is a fixed-position portal at a tab's rect; a resize makes that
+      // stale, so drop it.
+      setPeek(null);
+    };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(bar);
