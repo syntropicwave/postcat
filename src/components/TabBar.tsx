@@ -43,8 +43,18 @@ interface Peek {
   boxShadow: string;
 }
 
-// Minimum shrunk tab width; also the unit for the overflow fit calculation.
-const MIN_TAB = 90;
+// Minimum tab width; the unit for the fit calculation.
+export const MIN_TAB = 90;
+
+// How many tabs fit in a tab-bar of the given pixel width. PURE function of the
+// width — reserving room for the new-tab button, the overflow chevron and a
+// group-label buffer. Being a function of width alone (which never changes when
+// tabs are added/removed, since the bar is flex: 1 1 auto) is what makes the
+// fit loop-free: setting capacity can't feed back into this measurement.
+export function fitCapacity(barWidth: number): number {
+  const RESERVE = 120;
+  return Math.max(1, Math.floor((barWidth - RESERVE) / MIN_TAB));
+}
 
 // Reproduce the tab's own look (background + decoration bars) as inline styles,
 // since the portal is detached from the .tab-group / .active ancestors that the
@@ -115,36 +125,20 @@ export function TabBar() {
   const visibleTabs = tabs.slice(start, start + shown);
   const overflowed = shown < count;
 
-  // Fit the tabs by SHRINKING the visible window until it stops overflowing.
-  // Shrink-only is monotonic, so it can never fight itself into an infinite
-  // render loop (a real crash we hit trying to also grow here). Showing MORE
-  // tabs happens by resetting to "show all" — on a tab-count change (here) or a
-  // window resize (below) — and letting this shrink back down to the true fit.
-  const prevCount = useRef(count);
+  // Capacity is derived ONLY from the tab-bar's available width, remeasured
+  // when that width changes (window resize). It never depends on `capacity`,
+  // `count` or the tab content, so setting it cannot re-trigger the measurement
+  // — no feedback, no render loop. `shown = min(capacity, count)` then windows
+  // the tabs and the rest collapse into the chevron. (Overflow past the
+  // estimate is clipped by the bar's overflow:hidden, never a crash.)
   useLayoutEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
-    if (prevCount.current !== count) {
-      prevCount.current = count;
-      if (capacity < count) {
-        // Re-show all (once per count change); the next pass measures + shrinks.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setCapacity(count);
-        return;
-      }
-    }
-    const over = bar.scrollWidth - bar.clientWidth;
-    if (over > 1 && shown > 1) {
-      setCapacity(Math.max(1, shown - Math.max(1, Math.ceil(over / MIN_TAB))));
-    }
-  }, [shown, count, capacity]);
-
-  // A window resize changes the available width; re-expand and let the layout
-  // effect settle to the new fit.
-  useEffect(() => {
-    const onResize = () => setCapacity(999);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const measure = () => setCapacity(fitCapacity(bar.clientWidth));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(bar);
+    return () => ro.disconnect();
   }, []);
 
   // Group runs of adjacent VISIBLE tabs that share the same host alias.
