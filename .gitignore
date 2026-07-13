@@ -28,3 +28,6 @@ dist-ssr
 
 # deployed local app copy (build.ps1)
 /app/
+
+# updater signing keys — NEVER commit the private key
+/.secrets/

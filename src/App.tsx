@@ -15,6 +15,8 @@ import { CommandPalette } from "./components/CommandPalette";
 import { DiffView } from "./components/DiffView";
 import { Icon } from "./components/Icon";
 import { ResizeHandle } from "./components/ResizeHandle";
+import { UpdateBanner } from "./components/UpdateBanner";
+import { useUpdater, autoUpdateEnabled } from "./state/updater";
 import { usePersistentState } from "./hooks/usePersistentState";
 import { useAppSettings } from "./state/appSettings";
 import { useHostAliases } from "./state/hostAliases";
@@ -73,6 +75,11 @@ function App() {
     void loadSettings();
     void loadHostAliases();
   }, [loadSettings, loadHostAliases]);
+
+  // Auto-check for updates on launch (opt-out in Settings).
+  useEffect(() => {
+    if (autoUpdateEnabled()) void useUpdater.getState().runCheck();
+  }, []);
 
   // Mirror the active request's address into the OS window title (taskbar,
   // alt-tab), the way Postman does.
@@ -288,6 +295,7 @@ function App() {
       {diffPair && (
         <DiffView ids={diffPair} onClose={() => setDiffPair(null)} />
       )}
+      <UpdateBanner />
     </div>
   );
 }

@@ -1825,6 +1825,94 @@ textarea:focus-visible {
   gap: 8px;
 }
 
+/* ---------- Update banner ---------- */
+
+.update-banner {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 400;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  padding: 12px 14px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.update-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+}
+
+.update-banner-head svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.update-banner-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.update-banner-x {
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+}
+
+.update-banner-x:hover {
+  color: var(--text);
+}
+
+.update-banner-notes {
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+}
+
+.update-banner-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.update-progress {
+  position: relative;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.update-progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+  transition: width 0.15s;
+}
+
+.update-progress-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text);
+}
+
 /* ---------- Modals ---------- */
 
 .modal-backdrop {

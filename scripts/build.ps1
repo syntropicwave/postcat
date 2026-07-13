@@ -15,13 +15,15 @@
     ./scripts/build.ps1 log  -Tail 40    # tail the build log
     ./scripts/build.ps1 deploy           # force the swap now (waits if app is open)
     ./scripts/build.ps1 run              # launch app\postcat.exe
+    ./scripts/build.ps1 release          # publish the built installer to GitHub Releases
     ./scripts/build.ps1 stop | restart
 
-  State lives in .build\ (git-ignored). The deployed app lives in app\.
+  Builds are signed for the auto-updater with .secrets\postcat-updater.key
+  (git-ignored — keep a backup!). State lives in .build\, the app in app\.
 #>
 param(
   [Parameter(Position = 0)]
-  [ValidateSet("start", "stop", "status", "restart", "log", "deploy", "run")]
+  [ValidateSet("start", "stop", "status", "restart", "log", "deploy", "run", "release")]
   [string]$Command = "status",
   [switch]$NoBundle,
   [int]$Tail = 30
@@ -36,6 +38,8 @@ $runFile = Join-Path $stateDir "run.ps1"
 $exePath = Join-Path $repo "src-tauri\target\release\postcat.exe"
 $appDir = Join-Path $repo "app"
 $deployExe = Join-Path $appDir "postcat.exe"
+$keyFile = Join-Path $repo ".secrets\postcat-updater.key"
+$ghRepo = "syntropicwave/postcat"
 New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
 
 function Is-Locked([string]$p) {
@@ -125,6 +129,12 @@ $runnerBody = @'
 param([string]$Repo,[string]$Log,[string]$AppDir,[string]$DeployExe,[string]$ExePath,[switch]$NoBundle)
 $env:Path = "C:\Program Files\Git\usr\bin;$env:USERPROFILE\.cargo\bin;$env:Path"
 Set-Location $Repo
+# Sign updater artifacts (createUpdaterArtifacts is on, so the build needs this).
+$keyFile = Join-Path $Repo ".secrets\postcat-updater.key"
+if (Test-Path $keyFile) {
+  $env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content $keyFile -Raw).Trim()
+  $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ""
+}
 function Locked($p){ if(-not(Test-Path $p)){return $false}; try{$f=[System.IO.File]::Open($p,'Open','ReadWrite','None');$f.Close();$false}catch{$true} }
 ("__BUILD_START__ " + (Get-Date -Format o)) | Out-File -FilePath $Log -Encoding utf8
 if ($NoBundle) { npm run tauri build -- --no-bundle *>> $Log } else { npm run tauri build *>> $Log }
@@ -189,6 +199,53 @@ function Do-Run {
   Write-Host "Launched $deployExe"
 }
 
+# Publish the freshly-built, signed NSIS installer to GitHub Releases and write
+# the latest.json manifest the app's updater reads. Requires an authenticated
+# `gh` CLI and a completed `start` build (which produces the .exe + .sig).
+function Do-Release {
+  if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+    Write-Host "GitHub CLI (gh) not found. Install it and run 'gh auth login'." -ForegroundColor Red; return
+  }
+  $conf = Get-Content (Join-Path $repo "src-tauri\tauri.conf.json") -Raw | ConvertFrom-Json
+  $version = $conf.version
+  $tag = "v$version"
+  $nsisDir = Join-Path $repo "src-tauri\target\release\bundle\nsis"
+  $setup = Get-ChildItem $nsisDir -Filter "*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $setup) {
+    Write-Host "No NSIS installer in $nsisDir — run './scripts/build.ps1 start' first." -ForegroundColor Red; return
+  }
+  $sigFile = "$($setup.FullName).sig"
+  if (-not (Test-Path $sigFile)) {
+    Write-Host "No signature next to the installer. Build with the signing key present (.secrets\postcat-updater.key)." -ForegroundColor Red; return
+  }
+  $sig = (Get-Content $sigFile -Raw).Trim()
+  $url = "https://github.com/$ghRepo/releases/download/$tag/$($setup.Name)"
+  $manifest = [ordered]@{
+    version   = $version
+    notes     = "postcat $version"
+    pub_date  = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+    platforms = [ordered]@{
+      "windows-x86_64" = [ordered]@{ signature = $sig; url = $url }
+    }
+  }
+  $latest = Join-Path $stateDir "latest.json"
+  ($manifest | ConvertTo-Json -Depth 6) | Set-Content $latest -Encoding utf8
+
+  & gh release view $tag -R $ghRepo *> $null
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host "Release $tag exists — uploading assets (clobber)…" -ForegroundColor Cyan
+    & gh release upload $tag $setup.FullName $latest -R $ghRepo --clobber
+  }
+  else {
+    Write-Host "Creating release $tag…" -ForegroundColor Cyan
+    & gh release create $tag $setup.FullName $latest -R $ghRepo --title "postcat $version" --notes "postcat $version"
+  }
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host "Released $tag ✓  Users will pull it from releases/latest/download/latest.json" -ForegroundColor Green
+  }
+  else { Write-Host "gh release failed (see output above)." -ForegroundColor Red }
+}
+
 switch ($Command) {
   "start" { Do-Start }
   "stop" { Do-Stop }
@@ -197,4 +254,5 @@ switch ($Command) {
   "log" { Show-Tail $Tail }
   "deploy" { Do-Deploy }
   "run" { Do-Run }
+  "release" { Do-Release }
 }

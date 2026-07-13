@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { appSettingsGet } from "../ipc/commands";
 import { useAppSettings } from "../state/appSettings";
+import { usePersistentState } from "../hooks/usePersistentState";
+import { useUpdater, AUTO_UPDATE_KEY } from "../state/updater";
 import type { AppSettings } from "../types";
 
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
@@ -241,6 +243,10 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               />
             </label>
           )}
+
+          {/* ---------------- Updates ---------------- */}
+          <div className="settings-section">Updates</div>
+          <UpdatesSection />
         </div>
 
         <div className="retention-actions">
@@ -251,6 +257,45 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function UpdatesSection() {
+  const [auto, setAuto] = usePersistentState(AUTO_UPDATE_KEY, true);
+  const status = useUpdater((s) => s.status);
+  const version = useUpdater((s) => s.version);
+  const error = useUpdater((s) => s.error);
+  const runCheck = useUpdater((s) => s.runCheck);
+  const busy = status === "checking" || status === "downloading";
+
+  const statusText =
+    status === "checking"
+      ? "Checking…"
+      : status === "uptodate"
+        ? "You're on the latest version."
+        : status === "available"
+          ? `Update available: ${version}`
+          : status === "error"
+            ? `Check failed: ${error ?? ""}`
+            : "";
+
+  return (
+    <>
+      <label className="modal-check">
+        <input
+          type="checkbox"
+          checked={auto}
+          onChange={(e) => setAuto(e.target.checked)}
+        />
+        Check for updates automatically on launch
+      </label>
+      <div className="cert-row">
+        <button disabled={busy} onClick={() => void runCheck(true)}>
+          {status === "checking" ? "Checking…" : "Check for updates"}
+        </button>
+        {statusText && <span className="settings-hint">{statusText}</span>}
+      </div>
+    </>
   );
 }
 
