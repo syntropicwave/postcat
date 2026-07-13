@@ -417,10 +417,10 @@ textarea:focus-visible {
   padding: 8px 10px;
   border-right: 1px solid var(--border);
   cursor: pointer;
-  /* Grow to share the row (capped so one tab isn't the whole bar); shrink to
-     the min, then collapse into the overflow list. Grow weight 20 so tabs win
-     the space over the trailing drag spacer (weight 1). */
-  flex: 20 1 0;
+  /* Sized to content (so a lone tab isn't stretched huge); shrink to the min
+     when crowded, then collapse into the overflow list. The leftover space is
+     the draggable .tab-drag spacer, not stretched tabs. */
+  flex: 0 1 auto;
   min-width: 90px;
   max-width: 260px;
   white-space: nowrap;

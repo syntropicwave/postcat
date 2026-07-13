@@ -306,15 +306,7 @@ export function TabBar() {
           <div
             key={gkey}
             className="tab-group"
-            style={
-              {
-                "--group-color": groupColor,
-                // Grow proportionally to how many tabs it holds (×20 so the
-                // group/tabs win the space over the trailing drag spacer, which
-                // only soaks up the leftover once tabs hit their max width).
-                flex: `${g.cells.length * 20} 1 0`,
-              } as React.CSSProperties
-            }
+            style={{ "--group-color": groupColor } as React.CSSProperties}
           >
             <span className="tab-group-label" title={g.match.alias.host}>
               <HostChip
