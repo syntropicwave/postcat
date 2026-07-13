@@ -210,9 +210,10 @@ function Do-Release {
   $version = $conf.version
   $tag = "v$version"
   $nsisDir = Join-Path $repo "src-tauri\target\release\bundle\nsis"
-  $setup = Get-ChildItem $nsisDir -Filter "*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+  # Pin to THIS version's installer — the folder may still hold older ones.
+  $setup = Get-ChildItem $nsisDir -Filter "postcat_${version}_*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $setup) {
-    Write-Host "No NSIS installer in $nsisDir — run './scripts/build.ps1 start' first." -ForegroundColor Red; return
+    Write-Host "No NSIS installer for $version in $nsisDir — run './scripts/build.ps1 start' first." -ForegroundColor Red; return
   }
   $sigFile = "$($setup.FullName).sig"
   if (-not (Test-Path $sigFile)) {
