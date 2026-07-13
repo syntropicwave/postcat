@@ -101,6 +101,9 @@ pub async fn login(url: &str, email: &str, auth_verifier: &str) -> Result<LoginR
     resp.json().await.map_err(|e| e.to_string())
 }
 
+// Client for the server's recover-info endpoint. Part of the password-recovery
+// flow (see crypto::recover) that isn't wired to a command yet — kept ready.
+#[allow(dead_code)]
 pub async fn recover_info(url: &str, email: &str) -> Result<(String, String), String> {
     let resp = client()
         .get(format!("{}/v1/recover-info", base(url)))
