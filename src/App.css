@@ -787,6 +787,7 @@ textarea:focus-visible {
 
 .url-bar {
   display: flex;
+  align-items: center;
   gap: 8px;
   padding: 10px;
 }
@@ -794,6 +795,29 @@ textarea:focus-visible {
 /* Only the address field flexes; the method + action buttons keep their size. */
 .url-bar > :not(.url-input-wrap) {
   flex-shrink: 0;
+}
+
+/* Every control in the address row shares one height so they line up. */
+.url-bar > .method,
+.url-bar .url-input-wrap,
+.url-bar .url-input,
+.url-bar .send-btn,
+.url-bar .save-btn,
+.url-bar .icon-btn {
+  height: 38px;
+}
+
+/* Action icon buttons: equal square footprint and a consistent icon size (the
+   default varies visually between glyphs). */
+.url-bar .icon-btn {
+  min-width: 38px;
+  border-radius: 8px;
+}
+
+.url-bar .icon-btn svg,
+.url-bar .save-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .method {
@@ -822,8 +846,11 @@ textarea:focus-visible {
 }
 
 .send-btn {
-  padding: 8px 22px;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 22px;
+  border-radius: 8px;
   background: var(--accent);
   color: #fff;
   font-weight: 600;
