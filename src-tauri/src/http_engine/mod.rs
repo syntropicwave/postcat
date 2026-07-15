@@ -220,7 +220,89 @@ pub enum EngineError {
     #[error("{0}")]
     Connect(String),
     #[error("{0}")]
+    Timeout(String),
+    #[error("{}", describe_reqwest(.0))]
     Request(#[from] reqwest::Error),
+}
+
+/// Join an error with its `source()` chain into a single readable line, keeping
+/// each distinct cause. reqwest/hyper hide the actionable cause (DNS, refused,
+/// TLS, …) inside this chain; its top-level Display alone is nearly useless.
+pub(crate) fn error_chain(err: &dyn std::error::Error) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    let mut cur: Option<&dyn std::error::Error> = Some(err);
+    while let Some(e) = cur {
+        let msg = e.to_string();
+        // Skip empties and messages already implied by an earlier link.
+        if !msg.trim().is_empty() && !parts.iter().any(|p| p == &msg || p.contains(&msg)) {
+            parts.push(msg);
+        }
+        cur = e.source();
+    }
+    parts.join(": ")
+}
+
+/// A detailed, human-friendly description of a reqwest failure: which phase it
+/// failed in, the target URL, the underlying cause chain, and a hint.
+fn describe_reqwest(e: &reqwest::Error) -> String {
+    use std::error::Error as _;
+    let phase = if e.is_timeout() {
+        "Request timed out"
+    } else if e.is_connect() {
+        "Could not connect to the server"
+    } else if e.is_redirect() {
+        "Too many redirects"
+    } else if e.is_decode() || e.is_body() {
+        "Failed reading the response body"
+    } else if e.is_request() {
+        "Could not send the request"
+    } else if e.is_builder() {
+        "Could not build the request"
+    } else if e.is_status() {
+        "Server returned an error status"
+    } else {
+        "Request failed"
+    };
+
+    // Prefer the cause chain (skipping reqwest's vague top line if it has one).
+    let detail = match e.source() {
+        Some(src) => error_chain(src),
+        None => e.to_string(),
+    };
+    let lower = detail.to_ascii_lowercase();
+    let hint = if e.is_timeout() {
+        Some("the server took too long — increase the request timeout, or it may be slow/unresponsive")
+    } else if lower.contains("certificate")
+        || lower.contains("tls")
+        || lower.contains("ssl")
+        || lower.contains("handshake")
+    {
+        Some("TLS problem — the certificate may be self-signed, expired or untrusted; you can disable SSL verification in request settings, or add the CA in Settings")
+    } else if lower.contains("dns")
+        || lower.contains("lookup address")
+        || lower.contains("name or service not known")
+        || lower.contains("no such host")
+        || lower.contains("failed to lookup")
+    {
+        Some("the host could not be resolved — check the URL/spelling and your DNS/network")
+    } else if lower.contains("refused") {
+        Some("the connection was refused — the server may be down or not listening on that port")
+    } else if lower.contains("unreachable") {
+        Some("the network is unreachable — check your connection/VPN/proxy")
+    } else if e.is_connect() {
+        Some("check the URL and port, that the server is running and reachable, and any VPN/proxy")
+    } else {
+        None
+    };
+
+    let mut out = match e.url() {
+        Some(u) => format!("{phase} ({}): {detail}", u.as_str()),
+        None => format!("{phase}: {detail}"),
+    };
+    if let Some(h) = hint {
+        out.push_str(&format!("\nHint: {h}"));
+    }
+    out
 }
 
 pub async fn execute(
@@ -247,6 +329,9 @@ pub async fn execute_streaming(
     if timed::eligible(spec, app) {
         match timed::execute(jar.clone(), spec, app, on_stream_chunk.clone()).await {
             Ok(data) => return Ok(data),
+            // A timeout is a genuine failure — retrying with reqwest would just
+            // wait the whole timeout again, so surface it directly.
+            Err(err @ EngineError::Timeout(_)) => return Err(err),
             Err(err) => {
                 tracing::warn!(%err, "instrumented path failed, falling back to reqwest");
             }

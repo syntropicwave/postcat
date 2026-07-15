@@ -189,17 +189,27 @@ async fn one_hop(
     let t = Instant::now();
     let mut addrs = with_deadline(deadline, tokio::net::lookup_host((host.as_str(), port)))
         .await?
-        .map_err(|e| EngineError::Connect(format!("dns: {e}")))?;
-    let addr = addrs
-        .next()
-        .ok_or_else(|| EngineError::Connect("dns returned no addresses".into()))?;
+        .map_err(|e| {
+            EngineError::Connect(format!(
+                "DNS resolution failed for {host}: {}\nHint: the host could not be resolved — check the URL/spelling and your DNS/network",
+                super::error_chain(&e)
+            ))
+        })?;
+    let addr = addrs.next().ok_or_else(|| {
+        EngineError::Connect(format!("DNS returned no addresses for {host}"))
+    })?;
     let dns_ms = Some(ms(t));
 
     // ---- TCP ----
     let t = Instant::now();
     let tcp = with_deadline(deadline, TcpStream::connect(addr))
         .await?
-        .map_err(|e| EngineError::Connect(format!("connect: {e}")))?;
+        .map_err(|e| {
+            EngineError::Connect(format!(
+                "Could not connect to {addr}: {}\nHint: check the URL and port, that the server is running and reachable, and any VPN/proxy",
+                super::error_chain(&e)
+            ))
+        })?;
     tcp.set_nodelay(true).ok();
     let connect_ms = Some(ms(t));
 
@@ -226,7 +236,12 @@ async fn one_hop(
         let connector = tokio_native_tls::TlsConnector::from(connector);
         let tls = with_deadline(deadline, connector.connect(&host, tcp))
             .await?
-            .map_err(|e| EngineError::Connect(format!("tls: {e}")))?;
+            .map_err(|e| {
+                EngineError::Connect(format!(
+                    "TLS handshake with {host} failed: {}\nHint: the certificate may be self-signed, expired or untrusted — you can disable SSL verification in request settings, or add the CA in Settings",
+                    super::error_chain(&e)
+                ))
+            })?;
         let tls_ms = Some(ms(t));
         exchange(
             TokioIo::new(tls),
@@ -294,7 +309,12 @@ where
 {
     let (mut sender, conn) = hyper::client::conn::http1::handshake(io)
         .await
-        .map_err(|e| EngineError::Connect(e.to_string()))?;
+        .map_err(|e| {
+            EngineError::Connect(format!(
+                "HTTP connection setup failed: {}",
+                super::error_chain(&e)
+            ))
+        })?;
     tokio::spawn(async move {
         let _ = conn.await;
     });
@@ -345,7 +365,12 @@ where
     let t = Instant::now();
     let response: HyperResponse<Incoming> = with_deadline(deadline, sender.send_request(request))
         .await?
-        .map_err(|e| EngineError::Connect(e.to_string()))?;
+        .map_err(|e| {
+            EngineError::Connect(format!(
+                "The connection failed while sending the request: {}",
+                super::error_chain(&e)
+            ))
+        })?;
     let server_ms = ms(t);
 
     let status = response.status();
@@ -391,7 +416,12 @@ where
     loop {
         let frame = with_deadline(deadline, incoming.frame()).await?;
         let Some(frame) = frame else { break };
-        let frame = frame.map_err(|e| EngineError::Connect(e.to_string()))?;
+        let frame = frame.map_err(|e| {
+            EngineError::Connect(format!(
+                "The connection dropped while receiving the response: {}",
+                super::error_chain(&e)
+            ))
+        })?;
         if let Ok(chunk) = frame.into_data() {
             size += chunk.len();
             if let Some(cb) = &chunk_cb {
@@ -432,6 +462,12 @@ where
     })
 }
 
+fn timeout_err() -> EngineError {
+    EngineError::Timeout(
+        "Request timed out — the server took too long to respond.\nHint: increase the timeout in request settings, or the server/network may be slow or unreachable".into(),
+    )
+}
+
 /// Apply the overall request timeout to an await, if one is set.
 async fn with_deadline<F: std::future::Future>(
     deadline: Option<Instant>,
@@ -442,11 +478,11 @@ async fn with_deadline<F: std::future::Future>(
         Some(at) => {
             let now = Instant::now();
             if now >= at {
-                return Err(EngineError::Connect("request timed out".into()));
+                return Err(timeout_err());
             }
             tokio::time::timeout(at - now, fut)
                 .await
-                .map_err(|_| EngineError::Connect("request timed out".into()))
+                .map_err(|_| timeout_err())
         }
     }
 }
