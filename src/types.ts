@@ -67,6 +67,16 @@ export interface Timings {
   redirects: number;
 }
 
+/** Stage of the request where a failure happened (drives the error pipeline). */
+export type ErrorPhase =
+  "dns" | "tcp" | "tls" | "send" | "receive" | "timeout" | "request" | "other";
+
+export interface SendErrorInfo {
+  phase: ErrorPhase;
+  message: string;
+  hint: string | null;
+}
+
 export interface SendResult {
   history_id: number;
   status: number;

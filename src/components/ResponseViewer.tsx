@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { EditorView } from "@codemirror/view";
 import { json } from "@codemirror/lang-json";
@@ -6,7 +6,7 @@ import { html } from "@codemirror/lang-html";
 import { xml } from "@codemirror/lang-xml";
 import { save } from "@tauri-apps/plugin-dialog";
 import { historySaveBody } from "../ipc/commands";
-import type { SendResult } from "../types";
+import type { ErrorPhase, SendErrorInfo, SendResult } from "../types";
 import { usePrefersDark } from "../hooks/usePrefersDark";
 import { ExtractDialog } from "./ExtractDialog";
 import { TimingBar } from "./TimingBar";
@@ -17,7 +17,7 @@ type View = "pretty" | "raw" | "preview" | "headers" | "tests";
 
 interface Props {
   response: SendResult | null;
-  error: string | null;
+  error: SendErrorInfo | null;
   sending: boolean;
   streamText?: string;
   collectionId?: number | null;
@@ -78,14 +78,7 @@ export function ResponseViewer({
     return <div className="response-viewer empty">Sending…</div>;
   }
   if (error) {
-    return (
-      <div className="response-viewer">
-        <div className="response-status">
-          <span className="status-badge status-error">Error</span>
-        </div>
-        <pre className="response-error-text">{error}</pre>
-      </div>
-    );
+    return <ErrorView error={error} />;
   }
   if (!response) {
     return (
@@ -188,6 +181,87 @@ export function ResponseViewer({
           onClose={() => setExtractOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+const PIPELINE: { key: ErrorPhase; label: string }[] = [
+  { key: "dns", label: "DNS" },
+  { key: "tcp", label: "TCP" },
+  { key: "tls", label: "TLS" },
+  { key: "send", label: "Send" },
+  { key: "receive", label: "Receive" },
+];
+
+const PHASE_LABEL: Record<ErrorPhase, string> = {
+  dns: "DNS lookup failed",
+  tcp: "Connection failed",
+  tls: "TLS handshake failed",
+  send: "Failed sending request",
+  receive: "Failed receiving response",
+  timeout: "Request timed out",
+  request: "Request could not be built",
+  other: "Request failed",
+};
+
+/** Error view with a DNS → TCP → TLS → Send → Receive pipeline showing which
+ * stage broke (earlier stages marked as passed). */
+function ErrorView({ error }: { error: SendErrorInfo }) {
+  const failedIdx = PIPELINE.findIndex((s) => s.key === error.phase);
+  const showPipeline = failedIdx >= 0 || error.phase === "timeout";
+
+  return (
+    <div className="response-viewer">
+      <div className="response-status">
+        <span className="status-badge status-error">Error</span>
+        <span className="response-meta">{PHASE_LABEL[error.phase]}</span>
+      </div>
+      <div className="error-detail">
+        {showPipeline && (
+          <div className="error-pipeline">
+            {PIPELINE.map((s, i) => {
+              const state =
+                error.phase === "timeout"
+                  ? "timeout"
+                  : i < failedIdx
+                    ? "ok"
+                    : i === failedIdx
+                      ? "fail"
+                      : "skip";
+              return (
+                <Fragment key={s.key}>
+                  {i > 0 && <span className="error-stage-arrow">→</span>}
+                  <div
+                    className={`error-stage error-stage-${state}`}
+                    title={
+                      state === "ok"
+                        ? `${s.label} — ok`
+                        : state === "fail"
+                          ? `${s.label} — failed here`
+                          : state === "skip"
+                            ? `${s.label} — not reached`
+                            : s.label
+                    }
+                  >
+                    <span className="error-stage-icon">
+                      {state === "ok" ? (
+                        <Icon name="check" size={13} />
+                      ) : state === "fail" ? (
+                        <Icon name="x" size={13} />
+                      ) : (
+                        <span className="error-stage-dot" />
+                      )}
+                    </span>
+                    <span className="error-stage-label">{s.label}</span>
+                  </div>
+                </Fragment>
+              );
+            })}
+          </div>
+        )}
+        <pre className="response-error-text">{error.message}</pre>
+        {error.hint && <div className="error-hint">Hint: {error.hint}</div>}
+      </div>
     </div>
   );
 }

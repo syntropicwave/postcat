@@ -85,7 +85,7 @@ async fn send_request(
     item_id: Option<i64>,
     pre_request_script: Option<String>,
     test_script: Option<String>,
-) -> Result<SendResult, String> {
+) -> Result<SendResult, http_engine::SendError> {
     let app_settings = settings::get(&store).map_err(|e| e.to_string())?;
 
     // Script chains: collection -> folders (from the tree) + the tab's own.
@@ -203,9 +203,9 @@ async fn send_request(
             Err("cancelled".into())
         }
         Some(Err(err)) => {
-            let msg = err.to_string();
-            let _ = history::record(&store, &spec, &display, &secrets, Err(&msg));
-            Err(msg)
+            let se = err.into_send_error();
+            let _ = history::record(&store, &spec, &display, &secrets, Err(&se.message));
+            Err(se)
         }
         Some(Ok(resp)) => {
             let history_id = history::record(&store, &spec, &display, &secrets, Ok(&resp))

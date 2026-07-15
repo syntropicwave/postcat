@@ -12,12 +12,26 @@ import type {
   BodySpec,
   KeyValue,
   RequestSpec,
+  SendErrorInfo,
   SendResult,
   SendSettings,
   WsEvent,
   WsMessage,
 } from "../types";
 import { DEFAULT_SETTINGS } from "../types";
+
+/** Coerce whatever the send command rejected with into structured error info. */
+function toErrorInfo(e: unknown): SendErrorInfo {
+  if (e && typeof e === "object" && "message" in e && "phase" in e) {
+    const o = e as {
+      phase: SendErrorInfo["phase"];
+      message: string;
+      hint?: string | null;
+    };
+    return { phase: o.phase, message: String(o.message), hint: o.hint ?? null };
+  }
+  return { phase: "other", message: String(e), hint: null };
+}
 import { requestDefaults } from "./appSettings";
 
 export interface Tab {
@@ -37,7 +51,7 @@ export interface Tab {
   testScript: string;
   sending: boolean;
   response: SendResult | null;
-  responseError: string | null;
+  responseError: SendErrorInfo | null;
   /// Live SSE chunks while the request is streaming.
   streamText: string;
   wsStatus: "closed" | "connecting" | "open";
@@ -329,7 +343,7 @@ export const useTabs = create<TabsState>()(
           get().updateTab(id, {
             sending: false,
             response: null,
-            responseError: String(e),
+            responseError: toErrorInfo(e),
           });
         } finally {
           unlisten?.();

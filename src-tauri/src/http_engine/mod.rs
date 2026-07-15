@@ -200,6 +200,45 @@ pub struct HttpResponseData {
     pub timings: Timings,
 }
 
+/// The stage of a request where a failure happened. Drives the UI pipeline
+/// (DNS → TCP → TLS → send → receive): every stage before the failing one is
+/// shown as passed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Phase {
+    Dns,
+    Tcp,
+    Tls,
+    Send,
+    Receive,
+    Timeout,
+    Request,
+    Other,
+}
+
+/// Structured request failure surfaced to the UI.
+#[derive(Debug, serde::Serialize)]
+pub struct SendError {
+    pub phase: Phase,
+    pub message: String,
+    pub hint: Option<String>,
+}
+
+impl From<String> for SendError {
+    fn from(message: String) -> Self {
+        SendError {
+            phase: Phase::Other,
+            message,
+            hint: None,
+        }
+    }
+}
+impl From<&str> for SendError {
+    fn from(m: &str) -> Self {
+        m.to_owned().into()
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
     #[error("invalid method: {0}")]
@@ -219,10 +258,52 @@ pub enum EngineError {
     Proxy(String),
     #[error("{0}")]
     Connect(String),
-    #[error("{0}")]
-    Timeout(String),
-    #[error("{}", describe_reqwest(.0))]
-    Request(#[from] reqwest::Error),
+    #[error("{detail}")]
+    Network {
+        phase: Phase,
+        detail: String,
+        hint: Option<String>,
+    },
+}
+
+impl From<reqwest::Error> for EngineError {
+    fn from(e: reqwest::Error) -> Self {
+        let (phase, detail, hint) = describe_reqwest(&e);
+        EngineError::Network {
+            phase,
+            detail,
+            hint,
+        }
+    }
+}
+
+impl EngineError {
+    /// Flatten to the structured error the UI renders.
+    pub fn into_send_error(self) -> SendError {
+        match self {
+            EngineError::Network {
+                phase,
+                detail,
+                hint,
+            } => SendError {
+                phase,
+                message: detail,
+                hint,
+            },
+            EngineError::Connect(m) => SendError {
+                phase: Phase::Other,
+                message: m,
+                hint: None,
+            },
+            // Method / header / file / certificate / proxy: the request was
+            // never sent — a build/config problem.
+            e => SendError {
+                phase: Phase::Request,
+                message: e.to_string(),
+                hint: None,
+            },
+        }
+    }
 }
 
 /// Join an error with its `source()` chain into a single readable line, keeping
@@ -242,67 +323,74 @@ pub(crate) fn error_chain(err: &dyn std::error::Error) -> String {
     parts.join(": ")
 }
 
-/// A detailed, human-friendly description of a reqwest failure: which phase it
-/// failed in, the target URL, the underlying cause chain, and a hint.
-fn describe_reqwest(e: &reqwest::Error) -> String {
+/// Classify a reqwest failure into (phase, detail, hint). reqwest lumps
+/// DNS/TCP/TLS into one coarse "connect" error, so we refine the phase by
+/// scanning the underlying cause chain (which carries the real reason).
+fn describe_reqwest(e: &reqwest::Error) -> (Phase, String, Option<String>) {
     use std::error::Error as _;
-    let phase = if e.is_timeout() {
-        "Request timed out"
-    } else if e.is_connect() {
-        "Could not connect to the server"
-    } else if e.is_redirect() {
-        "Too many redirects"
-    } else if e.is_decode() || e.is_body() {
-        "Failed reading the response body"
-    } else if e.is_request() {
-        "Could not send the request"
-    } else if e.is_builder() {
-        "Could not build the request"
-    } else if e.is_status() {
-        "Server returned an error status"
-    } else {
-        "Request failed"
-    };
-
-    // Prefer the cause chain (skipping reqwest's vague top line if it has one).
+    // Prefer the cause chain (skipping reqwest's vague top line).
     let detail = match e.source() {
         Some(src) => error_chain(src),
         None => e.to_string(),
     };
     let lower = detail.to_ascii_lowercase();
-    let hint = if e.is_timeout() {
-        Some("the server took too long — increase the request timeout, or it may be slow/unresponsive")
+
+    let (phase, hint): (Phase, Option<&'static str>) = if e.is_timeout() {
+        (
+            Phase::Timeout,
+            Some("the server took too long — increase the request timeout, or it may be slow/unresponsive"),
+        )
+    } else if e.is_decode() || e.is_body() {
+        (
+            Phase::Receive,
+            Some("the response could not be read fully — the connection may have dropped mid-transfer"),
+        )
     } else if lower.contains("certificate")
         || lower.contains("tls")
         || lower.contains("ssl")
         || lower.contains("handshake")
+        || lower.contains("verify")
     {
-        Some("TLS problem — the certificate may be self-signed, expired or untrusted; you can disable SSL verification in request settings, or add the CA in Settings")
+        (
+            Phase::Tls,
+            Some("the certificate may be self-signed, expired or untrusted — you can disable SSL verification in request settings, or add the CA in Settings"),
+        )
     } else if lower.contains("dns")
         || lower.contains("lookup address")
         || lower.contains("name or service not known")
         || lower.contains("no such host")
         || lower.contains("failed to lookup")
     {
-        Some("the host could not be resolved — check the URL/spelling and your DNS/network")
+        (
+            Phase::Dns,
+            Some("the host could not be resolved — check the URL/spelling and your DNS/network"),
+        )
     } else if lower.contains("refused") {
-        Some("the connection was refused — the server may be down or not listening on that port")
+        (
+            Phase::Tcp,
+            Some(
+                "the connection was refused — the server may be down or not listening on that port",
+            ),
+        )
     } else if lower.contains("unreachable") {
-        Some("the network is unreachable — check your connection/VPN/proxy")
+        (
+            Phase::Tcp,
+            Some("the network is unreachable — check your connection/VPN/proxy"),
+        )
     } else if e.is_connect() {
-        Some("check the URL and port, that the server is running and reachable, and any VPN/proxy")
+        (
+            Phase::Tcp,
+            Some("check the URL and port, that the server is running and reachable, and any VPN/proxy"),
+        )
+    } else if e.is_redirect() {
+        (Phase::Receive, Some("too many redirects"))
+    } else if e.is_request() || e.is_builder() {
+        (Phase::Request, None)
     } else {
-        None
+        (Phase::Other, None)
     };
 
-    let mut out = match e.url() {
-        Some(u) => format!("{phase} ({}): {detail}", u.as_str()),
-        None => format!("{phase}: {detail}"),
-    };
-    if let Some(h) = hint {
-        out.push_str(&format!("\nHint: {h}"));
-    }
-    out
+    (phase, detail, hint.map(str::to_owned))
 }
 
 pub async fn execute(
@@ -331,7 +419,12 @@ pub async fn execute_streaming(
             Ok(data) => return Ok(data),
             // A timeout is a genuine failure — retrying with reqwest would just
             // wait the whole timeout again, so surface it directly.
-            Err(err @ EngineError::Timeout(_)) => return Err(err),
+            Err(
+                err @ EngineError::Network {
+                    phase: Phase::Timeout,
+                    ..
+                },
+            ) => return Err(err),
             Err(err) => {
                 tracing::warn!(%err, "instrumented path failed, falling back to reqwest");
             }

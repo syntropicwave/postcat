@@ -1074,10 +1074,85 @@ textarea:focus-visible {
   overflow: auto;
 }
 
-.response-error-text {
+.error-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   padding: 16px;
+  overflow: auto;
+}
+
+.error-pipeline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.error-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.error-stage-icon {
+  display: inline-flex;
+  align-items: center;
+}
+.error-stage-icon svg {
+  display: block;
+}
+
+.error-stage-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.error-stage-arrow {
+  color: var(--text-dim);
+}
+
+.error-stage-ok {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 40%, var(--border));
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
+.error-stage-fail {
+  color: var(--server-error);
+  border-color: color-mix(in srgb, var(--server-error) 50%, var(--border));
+  background: color-mix(in srgb, var(--server-error) 12%, transparent);
+}
+.error-stage-skip {
+  color: var(--text-dim);
+}
+.error-stage-timeout {
+  color: var(--redirect);
+  border-color: color-mix(in srgb, var(--redirect) 40%, var(--border));
+}
+
+.error-hint {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.response-error-text {
+  margin: 0;
   color: var(--server-error);
   font-family: var(--mono);
+  font-size: 12px;
   white-space: pre-wrap;
 }
 

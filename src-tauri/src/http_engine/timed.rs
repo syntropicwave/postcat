@@ -16,7 +16,7 @@ use reqwest_cookie_store::CookieStoreMutex;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 
-use super::{BodySpec, EngineError, HttpResponseData, RequestSpec, StreamChunkFn, Timings};
+use super::{BodySpec, EngineError, HttpResponseData, Phase, RequestSpec, StreamChunkFn, Timings};
 use crate::settings::AppSettings;
 
 const MAX_REDIRECT_HOPS: usize = 20;
@@ -189,26 +189,35 @@ async fn one_hop(
     let t = Instant::now();
     let mut addrs = with_deadline(deadline, tokio::net::lookup_host((host.as_str(), port)))
         .await?
-        .map_err(|e| {
-            EngineError::Connect(format!(
-                "DNS resolution failed for {host}: {}\nHint: the host could not be resolved — check the URL/spelling and your DNS/network",
+        .map_err(|e| EngineError::Network {
+            phase: Phase::Dns,
+            detail: format!(
+                "DNS resolution failed for {host}: {}",
                 super::error_chain(&e)
-            ))
+            ),
+            hint: Some(
+                "the host could not be resolved — check the URL/spelling and your DNS/network"
+                    .into(),
+            ),
         })?;
-    let addr = addrs
-        .next()
-        .ok_or_else(|| EngineError::Connect(format!("DNS returned no addresses for {host}")))?;
+    let addr = addrs.next().ok_or_else(|| EngineError::Network {
+        phase: Phase::Dns,
+        detail: format!("DNS returned no addresses for {host}"),
+        hint: None,
+    })?;
     let dns_ms = Some(ms(t));
 
     // ---- TCP ----
     let t = Instant::now();
     let tcp = with_deadline(deadline, TcpStream::connect(addr))
         .await?
-        .map_err(|e| {
-            EngineError::Connect(format!(
-                "Could not connect to {addr}: {}\nHint: check the URL and port, that the server is running and reachable, and any VPN/proxy",
-                super::error_chain(&e)
-            ))
+        .map_err(|e| EngineError::Network {
+            phase: Phase::Tcp,
+            detail: format!("Could not connect to {addr}: {}", super::error_chain(&e)),
+            hint: Some(
+                "check the URL and port, that the server is running and reachable, and any VPN/proxy"
+                    .into(),
+            ),
         })?;
     tcp.set_nodelay(true).ok();
     let connect_ms = Some(ms(t));
@@ -236,11 +245,13 @@ async fn one_hop(
         let connector = tokio_native_tls::TlsConnector::from(connector);
         let tls = with_deadline(deadline, connector.connect(&host, tcp))
             .await?
-            .map_err(|e| {
-                EngineError::Connect(format!(
-                    "TLS handshake with {host} failed: {}\nHint: the certificate may be self-signed, expired or untrusted — you can disable SSL verification in request settings, or add the CA in Settings",
-                    super::error_chain(&e)
-                ))
+            .map_err(|e| EngineError::Network {
+                phase: Phase::Tls,
+                detail: format!("TLS handshake with {host} failed: {}", super::error_chain(&e)),
+                hint: Some(
+                    "the certificate may be self-signed, expired or untrusted — you can disable SSL verification in request settings, or add the CA in Settings"
+                        .into(),
+                ),
             })?;
         let tls_ms = Some(ms(t));
         exchange(
@@ -309,11 +320,10 @@ where
 {
     let (mut sender, conn) = hyper::client::conn::http1::handshake(io)
         .await
-        .map_err(|e| {
-            EngineError::Connect(format!(
-                "HTTP connection setup failed: {}",
-                super::error_chain(&e)
-            ))
+        .map_err(|e| EngineError::Network {
+            phase: Phase::Send,
+            detail: format!("HTTP connection setup failed: {}", super::error_chain(&e)),
+            hint: None,
         })?;
     tokio::spawn(async move {
         let _ = conn.await;
@@ -365,11 +375,13 @@ where
     let t = Instant::now();
     let response: HyperResponse<Incoming> = with_deadline(deadline, sender.send_request(request))
         .await?
-        .map_err(|e| {
-            EngineError::Connect(format!(
+        .map_err(|e| EngineError::Network {
+            phase: Phase::Send,
+            detail: format!(
                 "The connection failed while sending the request: {}",
                 super::error_chain(&e)
-            ))
+            ),
+            hint: None,
         })?;
     let server_ms = ms(t);
 
@@ -416,11 +428,13 @@ where
     loop {
         let frame = with_deadline(deadline, incoming.frame()).await?;
         let Some(frame) = frame else { break };
-        let frame = frame.map_err(|e| {
-            EngineError::Connect(format!(
+        let frame = frame.map_err(|e| EngineError::Network {
+            phase: Phase::Receive,
+            detail: format!(
                 "The connection dropped while receiving the response: {}",
                 super::error_chain(&e)
-            ))
+            ),
+            hint: None,
         })?;
         if let Ok(chunk) = frame.into_data() {
             size += chunk.len();
@@ -463,9 +477,14 @@ where
 }
 
 fn timeout_err() -> EngineError {
-    EngineError::Timeout(
-        "Request timed out — the server took too long to respond.\nHint: increase the timeout in request settings, or the server/network may be slow or unreachable".into(),
-    )
+    EngineError::Network {
+        phase: Phase::Timeout,
+        detail: "Request timed out — the server took too long to respond".into(),
+        hint: Some(
+            "increase the timeout in request settings, or the server/network may be slow or unreachable"
+                .into(),
+        ),
+    }
 }
 
 /// Apply the overall request timeout to an await, if one is set.
