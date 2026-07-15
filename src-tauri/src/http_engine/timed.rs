@@ -195,9 +195,9 @@ async fn one_hop(
                 super::error_chain(&e)
             ))
         })?;
-    let addr = addrs.next().ok_or_else(|| {
-        EngineError::Connect(format!("DNS returned no addresses for {host}"))
-    })?;
+    let addr = addrs
+        .next()
+        .ok_or_else(|| EngineError::Connect(format!("DNS returned no addresses for {host}")))?;
     let dns_ms = Some(ms(t));
 
     // ---- TCP ----

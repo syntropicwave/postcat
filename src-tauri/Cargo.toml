@@ -1,6 +1,6 @@
 [package]
 name = "postcat"
-version = "0.1.1"
+version = "0.1.2"
 description = "Local-first API client with full-text searchable request history"
 edition = "2021"
 default-run = "postcat"
