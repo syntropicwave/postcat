@@ -76,9 +76,24 @@ function App() {
     void loadHostAliases();
   }, [loadSettings, loadHostAliases]);
 
-  // Auto-check for updates on launch (opt-out in Settings).
+  // Auto-check for updates: on launch, every 6h, and when the window regains
+  // focus (throttled). All gated on the Settings toggle, re-read each time so
+  // turning it off stops future checks.
   useEffect(() => {
-    if (autoUpdateEnabled()) void useUpdater.getState().runCheck();
+    const check = () => {
+      if (autoUpdateEnabled()) void useUpdater.getState().runCheck();
+    };
+    check();
+    const every6h = setInterval(check, 6 * 60 * 60 * 1000);
+    const onFocus = () => {
+      const since = Date.now() - useUpdater.getState().lastCheckedAt;
+      if (since > 30 * 60 * 1000) check();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(every6h);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   // Mirror the active request's address into the OS window title (taskbar,

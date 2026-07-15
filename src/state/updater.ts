@@ -31,6 +31,10 @@ interface UpdaterState {
   progress: number; // 0..1 (0 = unknown/indeterminate)
   error: string | null;
   dismissed: boolean;
+  /** Version the user dismissed — don't re-nag for the same one. */
+  dismissedVersion: string | null;
+  /** Epoch ms of the last check attempt (for throttling on focus). */
+  lastCheckedAt: number;
   /** Check for an update. `manual` surfaces "up to date"/errors in the UI. */
   runCheck: (manual?: boolean) => Promise<void>;
   install: () => Promise<void>;
@@ -45,10 +49,12 @@ export const useUpdater = create<UpdaterState>((set, get) => ({
   progress: 0,
   error: null,
   dismissed: false,
+  dismissedVersion: null,
+  lastCheckedAt: 0,
 
   runCheck: async (manual = false) => {
     if (get().status === "checking" || get().status === "downloading") return;
-    set({ status: "checking", error: null });
+    set({ status: "checking", error: null, lastCheckedAt: Date.now() });
     try {
       const upd = await check();
       if (upd) {
@@ -57,7 +63,8 @@ export const useUpdater = create<UpdaterState>((set, get) => ({
           update: upd,
           version: upd.version,
           notes: upd.body ?? null,
-          dismissed: false,
+          // Keep it dismissed only if it's the same version we already dismissed.
+          dismissed: get().dismissedVersion === upd.version,
         });
       } else {
         // No update. Only surface it when the user asked explicitly.
@@ -93,5 +100,5 @@ export const useUpdater = create<UpdaterState>((set, get) => ({
     }
   },
 
-  dismiss: () => set({ dismissed: true }),
+  dismiss: () => set({ dismissed: true, dismissedVersion: get().version }),
 }));
