@@ -5,7 +5,7 @@ import {
   historyGet,
   historySearch,
 } from "../ipc/commands";
-import { useTabs, parseParams } from "../state/tabs";
+import { useTabs, parseParams, tabFromHistory } from "../state/tabs";
 import type { HistorySummary, RequestSpec } from "../types";
 
 interface Props {
@@ -123,18 +123,9 @@ export function CommandPalette({ onClose }: Props) {
       onClose();
       return;
     }
-    // history entry → open as draft
+    // history entry → reopen with its response/error restored
     const detail = await historyGet(item.entry.id);
-    const spec = detail.req_spec;
-    newTab({
-      method: spec.method,
-      url: spec.url,
-      params: parseParams(spec.url),
-      headers: spec.headers ?? [],
-      body: spec.body ?? { kind: "none" },
-      settings: spec.settings,
-      auth: spec.auth ?? { kind: "none" },
-    });
+    newTab(tabFromHistory(detail));
     onClose();
   };
 

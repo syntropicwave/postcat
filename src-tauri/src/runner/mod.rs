@@ -305,7 +305,7 @@ async fn run_one(
             &request.spec,
             &display,
             &secrets,
-            Err(&e.to_string()),
+            Err(&e.to_send_error()),
         ),
     };
 

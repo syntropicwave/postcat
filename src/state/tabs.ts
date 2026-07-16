@@ -10,6 +10,7 @@ import {
 import type {
   AuthSpec,
   BodySpec,
+  HistoryDetail,
   KeyValue,
   RequestSpec,
   SendErrorInfo,
@@ -167,6 +168,50 @@ function decodeSafe(s: string): string {
 function encodeSafe(s: string): string {
   // Encode only what breaks query parsing; keep URLs human-readable.
   return s.replace(/[&=#\s]/g, (c) => encodeURIComponent(c));
+}
+
+/**
+ * Reopen a history entry as a tab: restore the request draft AND what came
+ * back — the response, or the structured error with its failure stage — so
+ * revisiting history shows what actually happened, not a blank draft.
+ */
+export function tabFromHistory(detail: HistoryDetail): Partial<Tab> {
+  const spec = detail.req_spec;
+  const partial: Partial<Tab> = {
+    method: spec.method,
+    url: spec.url,
+    params: parseParams(spec.url),
+    headers: spec.headers ?? [],
+    body: spec.body ?? { kind: "none" },
+    settings: spec.settings,
+    auth: spec.auth ?? { kind: "none" },
+  };
+  if (detail.error != null) {
+    partial.responseError = {
+      phase: detail.error_phase ?? "other",
+      message: detail.error,
+      hint: detail.error_hint,
+    };
+  } else if (detail.status != null) {
+    partial.response = {
+      history_id: detail.id,
+      status: detail.status,
+      status_text: detail.status_text ?? "",
+      http_version: detail.http_version ?? "",
+      headers: detail.resp_headers ?? [],
+      body_text: detail.resp_body_text,
+      body_base64: detail.resp_body_base64,
+      body_truncated: detail.resp_body_truncated,
+      size: detail.resp_size ?? 0,
+      duration_ms: detail.duration_ms ?? 0,
+      ttfb_ms: detail.ttfb_ms ?? 0,
+      timings: detail.timings,
+      tests: [],
+      console: [],
+      script_error: null,
+    };
+  }
+  return partial;
 }
 
 export function specFromTab(tab: Tab): RequestSpec {

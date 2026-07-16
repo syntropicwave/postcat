@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
-use crate::http_engine::{HttpResponseData, RequestSpec};
+use crate::http_engine::{HttpResponseData, RequestSpec, SendError};
 use crate::store::{Store, StoreError};
 
 /// How much response body text is returned to the UI in one piece. The full
@@ -51,6 +51,10 @@ pub struct HistoryDetail {
     pub resp_body_truncated: bool,
     pub ttfb_ms: Option<f64>,
     pub timings: crate::http_engine::Timings,
+    /// Failure stage tag (`dns`/`tcp`/`tls`/…) and hint, so reopening a failed
+    /// entry rebuilds the same error pipeline. NULL for successes.
+    pub error_phase: Option<String>,
+    pub error_hint: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -116,7 +120,7 @@ pub fn record(
     original: &RequestSpec,
     display: &RequestSpec,
     secrets: &[(String, String)],
-    outcome: Result<&HttpResponseData, &str>,
+    outcome: Result<&HttpResponseData, &SendError>,
 ) -> Result<i64, StoreError> {
     let spec = display;
     let spec_json = serde_json::to_string(original).unwrap_or_else(|_| "{}".into());
@@ -175,8 +179,9 @@ pub fn record(
             Err(error) => {
                 conn.execute(
                     "INSERT INTO history_entries
-                        (method, url, host, req_spec, req_headers, req_body_text, error)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                        (method, url, host, req_spec, req_headers, req_body_text,
+                         error, error_phase, error_hint)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                     params![
                         spec.method,
                         spec.url,
@@ -184,7 +189,9 @@ pub fn record(
                         spec_json,
                         req_headers,
                         req_body_text,
-                        error,
+                        error.message,
+                        error.phase.as_str(),
+                        error.hint,
                     ],
                 )?;
             }
@@ -475,7 +482,8 @@ pub fn get(store: &Store, id: i64) -> Result<HistoryDetail, StoreError> {
                     pinned, label,
                     req_spec, req_headers, req_body_text, status_text, http_version,
                     resp_headers, resp_body, resp_body_truncated, ttfb_ms,
-                    dns_ms, connect_ms, tls_ms, server_ms, download_ms, redirects
+                    dns_ms, connect_ms, tls_ms, server_ms, download_ms, redirects,
+                    error_phase, error_hint
              FROM history_entries WHERE id = ?1",
             params![id],
             |row| {
@@ -521,6 +529,8 @@ pub fn get(store: &Store, id: i64) -> Result<HistoryDetail, StoreError> {
                         total_ms: row.get::<_, Option<f64>>(7)?.unwrap_or(0.0),
                         redirects: row.get::<_, i64>(25)? as u32,
                     },
+                    error_phase: row.get(26)?,
+                    error_hint: row.get(27)?,
                 })
             },
         )

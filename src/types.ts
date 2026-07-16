@@ -314,6 +314,8 @@ export interface HistoryDetail extends HistorySummary {
   resp_body_truncated: boolean;
   ttfb_ms: number | null;
   timings: Timings;
+  error_phase: ErrorPhase | null;
+  error_hint: string | null;
 }
 
 export const HTTP_METHODS = [

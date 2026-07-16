@@ -199,12 +199,13 @@ async fn send_request(
     match outcome {
         None => {
             // Cancelled by the user: record the attempt, report as error.
-            let _ = history::record(&store, &spec, &display, &secrets, Err("cancelled"));
-            Err("cancelled".into())
+            let cancelled = http_engine::SendError::from("cancelled");
+            let _ = history::record(&store, &spec, &display, &secrets, Err(&cancelled));
+            Err(cancelled)
         }
         Some(Err(err)) => {
             let se = err.into_send_error();
-            let _ = history::record(&store, &spec, &display, &secrets, Err(&se.message));
+            let _ = history::record(&store, &spec, &display, &secrets, Err(&se));
             Err(se)
         }
         Some(Ok(resp)) => {

@@ -8,7 +8,7 @@ import {
   historySearch,
   historySetPinned,
 } from "../ipc/commands";
-import { useTabs, parseParams } from "../state/tabs";
+import { useTabs, tabFromHistory } from "../state/tabs";
 import type { EndpointGroup, HistorySummary, SearchFilters } from "../types";
 import { formatDuration } from "./ResponseViewer";
 import { RetentionPopover } from "./RetentionPopover";
@@ -330,16 +330,7 @@ function HistoryItem({
 
   const open = async () => {
     const detail = await historyGet(e.id);
-    const spec = detail.req_spec;
-    newTab({
-      method: spec.method,
-      url: spec.url,
-      params: parseParams(spec.url),
-      headers: spec.headers ?? [],
-      body: spec.body ?? { kind: "none" },
-      settings: spec.settings,
-      auth: spec.auth ?? { kind: "none" },
-    });
+    newTab(tabFromHistory(detail));
   };
 
   return (
@@ -437,16 +428,7 @@ function EndpointList({ historyVersion }: { historyVersion: number }) {
 
   const openEntry = async (id: number) => {
     const detail = await historyGet(id);
-    const spec = detail.req_spec;
-    newTab({
-      method: spec.method,
-      url: spec.url,
-      params: parseParams(spec.url),
-      headers: spec.headers ?? [],
-      body: spec.body ?? { kind: "none" },
-      settings: spec.settings,
-      auth: spec.auth ?? { kind: "none" },
-    });
+    newTab(tabFromHistory(detail));
   };
 
   return (

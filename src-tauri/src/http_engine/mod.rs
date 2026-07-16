@@ -216,6 +216,22 @@ pub enum Phase {
     Other,
 }
 
+impl Phase {
+    /// Stable lowercase tag stored in history and matched by the UI pipeline.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Phase::Dns => "dns",
+            Phase::Tcp => "tcp",
+            Phase::Tls => "tls",
+            Phase::Send => "send",
+            Phase::Receive => "receive",
+            Phase::Timeout => "timeout",
+            Phase::Request => "request",
+            Phase::Other => "other",
+        }
+    }
+}
+
 /// Structured request failure surfaced to the UI.
 #[derive(Debug, serde::Serialize)]
 pub struct SendError {
@@ -280,19 +296,24 @@ impl From<reqwest::Error> for EngineError {
 impl EngineError {
     /// Flatten to the structured error the UI renders.
     pub fn into_send_error(self) -> SendError {
+        self.to_send_error()
+    }
+
+    /// Borrowing variant — same mapping, for call sites that only hold `&self`.
+    pub fn to_send_error(&self) -> SendError {
         match self {
             EngineError::Network {
                 phase,
                 detail,
                 hint,
             } => SendError {
-                phase,
-                message: detail,
-                hint,
+                phase: *phase,
+                message: detail.clone(),
+                hint: hint.clone(),
             },
             EngineError::Connect(m) => SendError {
                 phase: Phase::Other,
-                message: m,
+                message: m.clone(),
                 hint: None,
             },
             // Method / header / file / certificate / proxy: the request was
