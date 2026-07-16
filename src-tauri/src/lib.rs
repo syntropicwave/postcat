@@ -962,6 +962,24 @@ fn db_path(app: &tauri::AppHandle) -> Result<PathBuf, tauri::Error> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[allow(clippy::expect_used)] // there is nothing better to do if the app cannot start
+/// Register with the Windows Restart Manager so the OS relaunches us after an
+/// update-triggered restart (but not after a crash/hang). Our state is restored
+/// from disk on launch, so no command-line args are needed. No-op elsewhere.
+#[cfg(windows)]
+fn register_app_restart() {
+    use windows::core::PCWSTR;
+    use windows::Win32::System::Recovery::{
+        RegisterApplicationRestart, RESTART_NO_CRASH, RESTART_NO_HANG,
+    };
+    // SAFETY: a plain FFI call; a null command line relaunches the exe as-is.
+    unsafe {
+        let _ = RegisterApplicationRestart(PCWSTR::null(), RESTART_NO_CRASH | RESTART_NO_HANG);
+    }
+}
+
+#[cfg(not(windows))]
+fn register_app_restart() {}
+
 pub fn run() {
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -996,6 +1014,9 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            // Relaunch after a Windows Update–triggered restart.
+            register_app_restart();
+
             let path = db_path(app.handle())?;
             if let Some(dir) = path.parent() {
                 std::fs::create_dir_all(dir)?;

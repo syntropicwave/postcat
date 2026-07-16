@@ -1,6 +1,6 @@
 [package]
 name = "postcat"
-version = "0.1.4"
+version = "0.1.5"
 description = "Local-first API client with full-text searchable request history"
 edition = "2021"
 default-run = "postcat"
@@ -65,6 +65,11 @@ tauri-plugin-window-state = "2.4.1"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+
+# Register with the Restart Manager so Windows relaunches us after an
+# update-triggered restart. Reuses the version already in the tree.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61", features = ["Win32_System_Recovery"] }
 
 [dev-dependencies]
 tiny_http = "0.12"

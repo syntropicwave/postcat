@@ -3271,7 +3271,7 @@ dependencies = [
 
 [[package]]
 name = "postcat"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "argon2",
  "base64 0.22.1",
@@ -3314,6 +3314,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+ "windows 0.61.3",
  "zeroize",
 ]
 
