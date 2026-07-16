@@ -1111,5 +1111,8 @@ pub fn run() {
             sync_now
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|e| {
+            tracing::error!("fatal: error while running tauri application: {e}");
+            std::process::exit(1);
+        });
 }
