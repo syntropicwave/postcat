@@ -15,7 +15,10 @@ use postcat_lib::store::Store;
 fn rec(
     store: &Store,
     spec: &RequestSpec,
-    outcome: Result<&postcat_lib::http_engine::HttpResponseData, &str>,
+    outcome: Result<
+        &postcat_lib::http_engine::HttpResponseData,
+        &postcat_lib::http_engine::SendError,
+    >,
 ) -> Result<i64, postcat_lib::store::StoreError> {
     history::record(store, spec, spec, &[], outcome)
 }
@@ -137,9 +140,12 @@ async fn network_error_is_recorded() {
         .unwrap_err();
 
     let store = Store::open_in_memory().unwrap();
-    let id = rec(&store, &spec, Err(&err.to_string())).unwrap();
+    let se = err.to_send_error();
+    let id = rec(&store, &spec, Err(&se)).unwrap();
 
     let detail = history::get(&store, id).unwrap();
     assert!(detail.summary.error.is_some());
     assert_eq!(detail.summary.status, None);
+    // The failure stage is persisted so reopening rebuilds the pipeline.
+    assert!(detail.error_phase.is_some());
 }

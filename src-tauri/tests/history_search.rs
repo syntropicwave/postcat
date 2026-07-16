@@ -2,7 +2,7 @@
 #![allow(clippy::unwrap_used)]
 
 use postcat_lib::history::{self, Endpoint, SearchFilters};
-use postcat_lib::http_engine::{BodySpec, HttpResponseData, RequestSpec, SendSettings};
+use postcat_lib::http_engine::{BodySpec, HttpResponseData, RequestSpec, SendError, SendSettings};
 use postcat_lib::store::Store;
 
 fn spec(method: &str, url: &str, body: Option<&str>) -> RequestSpec {
@@ -47,7 +47,7 @@ fn q(text: &str) -> SearchFilters {
 fn rec(
     store: &Store,
     spec: &RequestSpec,
-    outcome: Result<&HttpResponseData, &str>,
+    outcome: Result<&HttpResponseData, &SendError>,
 ) -> Result<i64, postcat_lib::store::StoreError> {
     history::record(store, spec, spec, &[], outcome)
 }
