@@ -284,7 +284,22 @@ export interface AppSettings {
   response_layout: "bottom" | "right";
   editor_font_size: number;
   wrap_response: boolean;
+  accent: AccentId;
 }
+
+export type AccentId =
+  "bronze" | "sapphire" | "indigo" | "teal" | "burgundy" | "amethyst";
+
+/** The six selectable accent palettes; `swatch` is a representative color for
+ * the settings picker (the real light/dark values live in App.css). */
+export const ACCENTS: { id: AccentId; label: string; swatch: string }[] = [
+  { id: "bronze", label: "Bronze", swatch: "#c88a3e" },
+  { id: "sapphire", label: "Sapphire", swatch: "#4a86e0" },
+  { id: "indigo", label: "Indigo", swatch: "#6f79e0" },
+  { id: "teal", label: "Teal", swatch: "#1ba493" },
+  { id: "burgundy", label: "Burgundy", swatch: "#c25578" },
+  { id: "amethyst", label: "Amethyst", swatch: "#9d85ff" },
+];
 
 export interface HostAlias {
   id: number;

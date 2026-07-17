@@ -38,6 +38,9 @@ pub struct AppSettings {
     pub editor_font_size: u32,
     /// Wrap long response bodies by default.
     pub wrap_response: bool,
+    /// Accent palette id: "bronze" | "sapphire" | "indigo" | "teal" |
+    /// "burgundy" | "amethyst". Drives the --accent CSS variables.
+    pub accent: String,
 }
 
 impl Default for AppSettings {
@@ -57,6 +60,7 @@ impl Default for AppSettings {
             response_layout: "bottom".into(),
             editor_font_size: 13,
             wrap_response: true,
+            accent: "bronze".into(),
         }
     }
 }

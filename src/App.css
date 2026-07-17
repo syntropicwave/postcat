@@ -53,6 +53,89 @@
   --server-error: #f0565a;
 }
 
+/* ---- Accent palettes ---------------------------------------------------
+   Each option overrides --accent / --on-accent. Light values are the base;
+   dark variants apply under the same condition as the dark theme, so the
+   "system" theme follows the OS automatically. "bronze" matches the defaults
+   above. --on-accent is the text/icon color placed on a solid accent fill
+   (dark for warm/bright accents, white for the cool ones). */
+:root[data-accent="bronze"] {
+  --accent: #a86f2c;
+  --on-accent: #201608;
+}
+:root[data-accent="sapphire"] {
+  --accent: #2f6fd0;
+  --on-accent: #ffffff;
+}
+:root[data-accent="indigo"] {
+  --accent: #4b57c4;
+  --on-accent: #ffffff;
+}
+:root[data-accent="teal"] {
+  --accent: #0f8b7d;
+  --on-accent: #201608;
+}
+:root[data-accent="burgundy"] {
+  --accent: #a83a5b;
+  --on-accent: #ffffff;
+}
+:root[data-accent="amethyst"] {
+  --accent: #7c5cff;
+  --on-accent: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="bronze"]:not([data-theme="light"]) {
+    --accent: #d29a54;
+    --on-accent: #201608;
+  }
+  :root[data-accent="sapphire"]:not([data-theme="light"]) {
+    --accent: #6ea8f5;
+    --on-accent: #ffffff;
+  }
+  :root[data-accent="indigo"]:not([data-theme="light"]) {
+    --accent: #8b95f5;
+    --on-accent: #ffffff;
+  }
+  :root[data-accent="teal"]:not([data-theme="light"]) {
+    --accent: #2bb5a6;
+    --on-accent: #201608;
+  }
+  :root[data-accent="burgundy"]:not([data-theme="light"]) {
+    --accent: #d76d8a;
+    --on-accent: #ffffff;
+  }
+  :root[data-accent="amethyst"]:not([data-theme="light"]) {
+    --accent: #9d85ff;
+    --on-accent: #ffffff;
+  }
+}
+
+:root[data-theme="dark"][data-accent="bronze"] {
+  --accent: #d29a54;
+  --on-accent: #201608;
+}
+:root[data-theme="dark"][data-accent="sapphire"] {
+  --accent: #6ea8f5;
+  --on-accent: #ffffff;
+}
+:root[data-theme="dark"][data-accent="indigo"] {
+  --accent: #8b95f5;
+  --on-accent: #ffffff;
+}
+:root[data-theme="dark"][data-accent="teal"] {
+  --accent: #2bb5a6;
+  --on-accent: #201608;
+}
+:root[data-theme="dark"][data-accent="burgundy"] {
+  --accent: #d76d8a;
+  --on-accent: #ffffff;
+}
+:root[data-theme="dark"][data-accent="amethyst"] {
+  --accent: #9d85ff;
+  --on-accent: #ffffff;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -2073,6 +2156,34 @@ textarea:focus-visible {
 .settings-modal {
   width: 440px;
   max-height: 82vh;
+}
+
+.accent-swatches {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+
+.accent-swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.accent-swatch:hover {
+  transform: scale(1.12);
+}
+
+.accent-swatch.selected {
+  /* Ring in the panel color then the live accent, so the pick reads clearly. */
+  box-shadow:
+    0 0 0 2px var(--bg-panel),
+    0 0 0 4px var(--accent);
 }
 
 .settings-body {

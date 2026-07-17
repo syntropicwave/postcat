@@ -49,5 +49,12 @@ export function applyAppearance(s: AppSettings) {
     root.dataset.theme = s.theme;
     root.style.colorScheme = s.theme;
   }
+  root.dataset.accent = s.accent ?? "bronze";
   root.style.setProperty("--editor-font-size", `${s.editor_font_size}px`);
+}
+
+/** Live-preview an accent on the document without persisting it (the settings
+ * picker uses this; Cancel restores the saved value). */
+export function setAccentPreview(accent: string) {
+  document.documentElement.dataset.accent = accent || "bronze";
 }

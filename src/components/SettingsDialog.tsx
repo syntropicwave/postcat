@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { appSettingsGet } from "../ipc/commands";
-import { useAppSettings } from "../state/appSettings";
+import { useAppSettings, setAccentPreview } from "../state/appSettings";
 import { usePersistentState } from "../hooks/usePersistentState";
 import { useUpdater, AUTO_UPDATE_KEY } from "../state/updater";
-import type { AppSettings } from "../types";
+import { ACCENTS, type AccentId, type AppSettings } from "../types";
 
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const stored = useAppSettings((s) => s.settings);
@@ -18,13 +18,24 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   if (!s) return null;
   const set = (p: Partial<AppSettings>) => setS({ ...s, ...p });
 
+  // The accent is previewed live on the document; undo that if the user
+  // cancels without saving.
+  const previewAccent = (id: AccentId) => {
+    set({ accent: id });
+    setAccentPreview(id);
+  };
+  const cancel = () => {
+    setAccentPreview(stored?.accent ?? "bronze");
+    onClose();
+  };
+
   const save = async () => {
     await update(s);
     onClose();
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={cancel}>
       <div
         className="modal settings-modal"
         onClick={(e) => e.stopPropagation()}
@@ -48,6 +59,26 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               <option value="dark">Dark</option>
             </select>
           </label>
+
+          <div className="modal-field">
+            Accent color
+            <div className="accent-swatches">
+              {ACCENTS.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`accent-swatch${
+                    s.accent === a.id ? " selected" : ""
+                  }`}
+                  style={{ background: a.swatch }}
+                  title={a.label}
+                  aria-label={a.label}
+                  aria-pressed={s.accent === a.id}
+                  onClick={() => previewAccent(a.id)}
+                />
+              ))}
+            </div>
+          </div>
 
           <label className="modal-field">
             Response pane
@@ -250,7 +281,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="retention-actions">
-          <button onClick={onClose}>Cancel</button>
+          <button onClick={cancel}>Cancel</button>
           <button className="primary" onClick={() => void save()}>
             Save
           </button>
