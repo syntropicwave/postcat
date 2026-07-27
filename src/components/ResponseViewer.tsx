@@ -389,6 +389,13 @@ function ResponseBody({
     );
   }
 
+  const truncatedNote = response.body_truncated && (
+    <div className="truncated-banner">
+      Body truncated at the capture cap — raise “Max captured body” in Settings
+      to see (and pretty-print) the full {formatSize(response.size)} response.
+    </div>
+  );
+
   const extensions =
     view === "pretty"
       ? contentType.includes("json")
@@ -401,14 +408,17 @@ function ResponseBody({
       : [];
 
   return (
-    <CodeMirror
-      className="response-code"
-      value={view === "pretty" ? prettyText : (response.body_text ?? "")}
-      readOnly
-      height="100%"
-      theme={dark ? "dark" : "light"}
-      extensions={wrap ? [...extensions, EditorView.lineWrapping] : extensions}
-    />
+    <>
+      {truncatedNote}
+      <CodeMirror
+        className="response-code"
+        value={view === "pretty" ? prettyText : (response.body_text ?? "")}
+        readOnly
+        height="100%"
+        theme={dark ? "dark" : "light"}
+        extensions={wrap ? [...extensions, EditorView.lineWrapping] : extensions}
+      />
+    </>
   );
 }
 

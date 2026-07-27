@@ -4,10 +4,6 @@ use serde::{Deserialize, Serialize};
 use crate::http_engine::{HttpResponseData, RequestSpec, SendError};
 use crate::store::{Store, StoreError};
 
-/// How much response body text is returned to the UI in one piece. The full
-/// captured body stays in the DB; the viewer gets a capped slice.
-const MAX_UI_BODY: usize = 2 * 1024 * 1024;
-
 /// How much response text feeds the full-text index. Kept well below the
 /// 5 MB capture cap so the index stays lean.
 const MAX_INDEX_TEXT: usize = 256 * 1024;
@@ -641,7 +637,9 @@ fn index_text(bytes: &[u8]) -> Option<String> {
 }
 
 /// Split a stored body into what the UI needs: lossy text for text-ish
-/// payloads, base64 for binary ones (images etc.).
+/// payloads, base64 for binary ones (images etc.). Text bodies are passed
+/// through whole — truncating here would break JSON pretty-printing; the
+/// capture cap (`max_captured_body_kb`) already bounds the size.
 pub fn body_for_ui(bytes: &[u8]) -> (Option<String>, Option<String>) {
     let looks_binary = bytes.iter().take(8192).any(|&b| b == 0);
     if looks_binary {
@@ -649,7 +647,6 @@ pub fn body_for_ui(bytes: &[u8]) -> (Option<String>, Option<String>) {
         let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
         (None, Some(b64))
     } else {
-        let capped = &bytes[..bytes.len().min(MAX_UI_BODY)];
-        (Some(String::from_utf8_lossy(capped).into_owned()), None)
+        (Some(String::from_utf8_lossy(bytes).into_owned()), None)
     }
 }

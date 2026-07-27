@@ -1190,6 +1190,14 @@ textarea:focus-visible {
   overflow: auto;
 }
 
+.truncated-banner {
+  padding: 5px 14px;
+  font-size: 12px;
+  color: var(--client-error);
+  background: color-mix(in srgb, var(--client-error) 10%, var(--bg-panel));
+  border-bottom: 1px solid var(--border);
+}
+
 .error-detail {
   display: flex;
   flex-direction: column;
