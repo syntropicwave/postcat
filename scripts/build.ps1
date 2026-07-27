@@ -199,9 +199,27 @@ function Do-Run {
   Write-Host "Launched $deployExe"
 }
 
+# Release notes for a version: the body of the "## <version>" section in
+# CHANGELOG.md (header may carry a date suffix). $null when absent or empty.
+function Get-ReleaseNotes([string]$version) {
+  $path = Join-Path $repo "CHANGELOG.md"
+  if (-not (Test-Path $path)) { return $null }
+  $lines = @(Get-Content $path)
+  $hit = $lines | Select-String -Pattern ("^## " + [regex]::Escape($version) + "(\s|$)") | Select-Object -First 1
+  if (-not $hit) { return $null }
+  $body = @()
+  for ($i = $hit.LineNumber; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -match '^## ') { break }
+    $body += $lines[$i]
+  }
+  $text = ($body -join "`n").Trim()
+  if ($text) { $text } else { $null }
+}
+
 # Publish the freshly-built, signed NSIS installer to GitHub Releases and write
-# the latest.json manifest the app's updater reads. Requires an authenticated
-# `gh` CLI and a completed `start` build (which produces the .exe + .sig).
+# the latest.json manifest the app's updater reads. Release notes come from the
+# CHANGELOG.md section for the current version. Requires an authenticated `gh`
+# CLI and a completed `start` build (which produces the .exe + .sig).
 function Do-Release {
   if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     Write-Host "GitHub CLI (gh) not found. Install it and run 'gh auth login'." -ForegroundColor Red; return
@@ -209,6 +227,10 @@ function Do-Release {
   $conf = Get-Content (Join-Path $repo "src-tauri\tauri.conf.json") -Raw | ConvertFrom-Json
   $version = $conf.version
   $tag = "v$version"
+  $notes = Get-ReleaseNotes $version
+  if (-not $notes) {
+    Write-Host "CHANGELOG.md has no '## $version' section — add short English bullets for this release first." -ForegroundColor Red; return
+  }
   $nsisDir = Join-Path $repo "src-tauri\target\release\bundle\nsis"
   # Pin to THIS version's installer — the folder may still hold older ones.
   $setup = Get-ChildItem $nsisDir -Filter "postcat_${version}_*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -223,7 +245,7 @@ function Do-Release {
   $url = "https://github.com/$ghRepo/releases/download/$tag/$($setup.Name)"
   $manifest = [ordered]@{
     version   = $version
-    notes     = "postcat $version"
+    notes     = $notes
     pub_date  = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
     platforms = [ordered]@{
       "windows-x86_64" = [ordered]@{ signature = $sig; url = $url }
@@ -234,12 +256,13 @@ function Do-Release {
 
   & gh release view $tag -R $ghRepo *> $null
   if ($LASTEXITCODE -eq 0) {
-    Write-Host "Release $tag exists — uploading assets (clobber)…" -ForegroundColor Cyan
+    Write-Host "Release $tag exists — refreshing notes + uploading assets (clobber)…" -ForegroundColor Cyan
+    & gh release edit $tag -R $ghRepo --notes $notes
     & gh release upload $tag $setup.FullName $latest -R $ghRepo --clobber
   }
   else {
     Write-Host "Creating release $tag…" -ForegroundColor Cyan
-    & gh release create $tag $setup.FullName $latest -R $ghRepo --title "postcat $version" --notes "postcat $version"
+    & gh release create $tag $setup.FullName $latest -R $ghRepo --title "postcat $version" --notes $notes
   }
   if ($LASTEXITCODE -eq 0) {
     Write-Host "Released $tag ✓  Users will pull it from releases/latest/download/latest.json" -ForegroundColor Green

@@ -1,0 +1,53 @@
+# Changelog
+
+User-facing release notes, short and in English. `build.ps1 release` publishes
+the `## <version>` section matching `tauri.conf.json` to the GitHub release and
+the updater manifest, and refuses to release without one. Convention: every
+shipped task bumps the patch version (package.json, tauri.conf.json,
+Cargo.toml, Cargo.lock) and adds a bullet to the top section.
+
+## 0.1.9
+
+- Show the full response body: large JSON responses (over 2 MB) now
+  pretty-print instead of rendering as one endless highlighted line
+- Warn with a banner when a response was cut at the capture cap, with a
+  pointer to the Settings knob that raises it
+
+## 0.1.8 — 2026-07-17
+
+- Accent color picker in Settings: bronze, sapphire, indigo, teal, burgundy,
+  amethyst
+
+## 0.1.7 — 2026-07-16
+
+- New default look: warm bronze accent
+
+## 0.1.6 — 2026-07-16
+
+- Reopening a history entry restores its response (or error), not just the
+  request draft
+
+## 0.1.5 — 2026-07-16
+
+- Relaunch automatically after an update-driven Windows restart
+
+## 0.1.4 — 2026-07-15
+
+- Failed requests show a stage pipeline (DNS → TCP → TLS → send → receive)
+  with the failing stage highlighted and a hint
+- Aligned the address-row action buttons
+
+## 0.1.3 — 2026-07-15
+
+- Check for updates periodically, not only at launch
+
+## 0.1.2 — 2026-07-15
+
+- Detailed request errors: classified causes with hints instead of a bare
+  reqwest message
+
+## 0.1.1 — 2026-07-13
+
+- First public release: requests, collections, searchable history, and the
+  auto-updater itself
+- Don't stretch a lone tab to full width
