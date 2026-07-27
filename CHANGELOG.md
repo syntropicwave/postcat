@@ -6,7 +6,7 @@ the updater manifest, and refuses to release without one. Convention: every
 shipped task bumps the patch version (package.json, tauri.conf.json,
 Cargo.toml, Cargo.lock) and adds a bullet to the top section.
 
-## 0.1.9
+## 0.1.9 — 2026-07-27
 
 - Show the full response body: large JSON responses (over 2 MB) now
   pretty-print instead of rendering as one endless highlighted line
