@@ -416,7 +416,9 @@ function ResponseBody({
         readOnly
         height="100%"
         theme={dark ? "dark" : "light"}
-        extensions={wrap ? [...extensions, EditorView.lineWrapping] : extensions}
+        extensions={
+          wrap ? [...extensions, EditorView.lineWrapping] : extensions
+        }
       />
     </>
   );
