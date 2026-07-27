@@ -1,4 +1,5 @@
 import CodeMirror from "@uiw/react-codemirror";
+import { EditorView } from "@codemirror/view";
 import { json } from "@codemirror/lang-json";
 import { xml } from "@codemirror/lang-xml";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -6,6 +7,59 @@ import type { BodySpec, FormField, KeyValue } from "../types";
 import { KeyValueEditor } from "./KeyValueEditor";
 import { GraphQLEditor } from "./GraphQLEditor";
 import { usePrefersDark } from "../hooks/usePrefersDark";
+
+/** Decode a JSON document pasted in string-escaped form — either the bare
+ * contents of a string literal (`{\"a\":1}`) or a quoted literal
+ * (`"{\"a\":1}"`), possibly double-encoded. Returns pretty-printed JSON, or
+ * null when the text is not escaped JSON (plain JSON returns null too, so
+ * callers know nothing needs rewriting). */
+export function decodeEscapedJson(raw: string): string | null {
+  const text = raw.trim();
+  if (!text) return null;
+  let value: unknown = text;
+  let layers = 0;
+  while (typeof value === "string" && layers < 4) {
+    const s = value;
+    try {
+      value = JSON.parse(s);
+    } catch {
+      // Not valid JSON as-is. On the first layer, `\"` escapes suggest the
+      // clipboard holds the *contents* of a string literal — re-wrap it in
+      // quotes (escaping any literal control chars) and parse that.
+      if (layers > 0 || !s.includes('\\"')) return null;
+      try {
+        value = JSON.parse(
+          `"${s
+            .replace(/\r/g, "\\r")
+            .replace(/\n/g, "\\n")
+            .replace(/\t/g, "\\t")}"`,
+        );
+      } catch {
+        return null;
+      }
+    }
+    layers++;
+  }
+  if (layers < 2 || typeof value !== "object" || value === null) return null;
+  return JSON.stringify(value, null, 2);
+}
+
+/** Paste that replaces the whole body and looks like escaped JSON is decoded
+ * and pretty-printed in place of the raw clipboard text. */
+const pasteDecodesEscapedJson = EditorView.domEventHandlers({
+  paste(event, view) {
+    const { from, to } = view.state.selection.main;
+    if (!(from === 0 && to === view.state.doc.length)) return false;
+    const clip = event.clipboardData?.getData("text/plain") ?? "";
+    const decoded = decodeEscapedJson(clip);
+    if (!decoded) return false;
+    event.preventDefault();
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: decoded },
+    });
+    return true;
+  },
+});
 
 interface Props {
   body: BodySpec;
@@ -56,6 +110,11 @@ export function BodyEditor({
 
   const beautify = () => {
     if (body.kind !== "raw") return;
+    const decoded = decodeEscapedJson(body.text);
+    if (decoded) {
+      onChange({ ...body, text: decoded });
+      return;
+    }
     try {
       onChange({
         ...body,
@@ -107,7 +166,7 @@ export function BodyEditor({
           className="body-code"
           extensions={
             body.content_type === "application/json"
-              ? [json()]
+              ? [json(), pasteDecodesEscapedJson]
               : body.content_type.includes("xml") ||
                   body.content_type.includes("html")
                 ? [xml()]
