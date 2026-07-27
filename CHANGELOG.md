@@ -6,7 +6,7 @@ the updater manifest, and refuses to release without one. Convention: every
 shipped task bumps the patch version (package.json, tauri.conf.json,
 Cargo.toml, Cargo.lock) and adds a bullet to the top section.
 
-## 0.1.10
+## 0.1.10 — 2026-07-27
 
 - Paste an escaped JSON body (`{\"a\":1}` or a quoted string literal, even
   double-encoded) and it decodes and pretty-prints automatically; the
