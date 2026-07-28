@@ -6,7 +6,7 @@ the updater manifest, and refuses to release without one. Convention: every
 shipped task bumps the patch version (package.json, tauri.conf.json,
 Cargo.toml, Cargo.lock) and adds a bullet to the top section.
 
-## 0.1.11
+## 0.1.11 — 2026-07-28
 
 - The request editor opens on the Body section by default, and each tab
   remembers its own active section across switches and restarts (it used to
