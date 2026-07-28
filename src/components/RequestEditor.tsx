@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Tab } from "../state/tabs";
+import type { RequestSection, Tab } from "../state/tabs";
 import { useTabs, parseParams, specFromTab, isWsUrl } from "../state/tabs";
 import { itemScriptsSet, itemUpdate } from "../ipc/commands";
 import { ScriptsEditor } from "./ScriptsEditor";
@@ -201,11 +201,10 @@ const COMMON_HEADERS = [
   "X-Request-Id",
 ];
 
-type Section = "params" | "auth" | "headers" | "body" | "scripts" | "docs";
-
 export function RequestEditor({ tab }: { tab: Tab }) {
   const { updateTab, setUrl, setParams, send, cancel } = useTabs();
-  const [section, setSection] = useState<Section>("params");
+  const section = tab.section ?? "body";
+  const setSection = (s: RequestSection) => updateTab(tab.id, { section: s });
   const [saveOpen, setSaveOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
 

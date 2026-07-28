@@ -64,8 +64,14 @@ export interface Tab {
   itemName: string | null;
   /// Markdown description shown in the Docs tab (saved with the item).
   description: string;
+  /// Active request-editor section, kept per tab (Body is the default —
+  /// it's the section used most).
+  section: RequestSection;
   dirty: boolean;
 }
+
+export type RequestSection =
+  "params" | "auth" | "headers" | "body" | "scripts" | "docs";
 
 interface TabsState {
   tabs: Tab[];
@@ -120,6 +126,7 @@ function makeTab(partial?: Partial<Tab>): Tab {
     itemId: null,
     itemName: null,
     description: "",
+    section: "body",
     dirty: false,
     ...partial,
   };
@@ -457,7 +464,11 @@ export const useTabs = create<TabsState>()(
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<TabsState>;
-        let tabs = (p.tabs ?? []).map((t) => ({ ...t })) as Tab[];
+        // section arrived after workspaces were first persisted — default it.
+        let tabs = (p.tabs ?? []).map((t) => ({
+          ...t,
+          section: t.section ?? "body",
+        })) as Tab[];
         if (tabs.length === 0) tabs = [makeTab()];
         const activeTabId = tabs.some((t) => t.id === p.activeTabId)
           ? (p.activeTabId as string)
