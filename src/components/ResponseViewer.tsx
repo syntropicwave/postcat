@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { EditorView } from "@codemirror/view";
+import { searchPanelOpen } from "@codemirror/search";
 import { json } from "@codemirror/lang-json";
 import { html } from "@codemirror/lang-html";
 import { xml } from "@codemirror/lang-xml";
@@ -102,7 +103,9 @@ export function ResponseViewer({
           {response.sent_at && (
             <span
               className="response-sent-at"
-              title={new Date(response.sent_at).toLocaleString()}
+              title={new Date(response.sent_at).toLocaleString([], {
+                hourCycle: "h23",
+              })}
             >
               {" · "}
               {formatSentAt(response.sent_at)}
@@ -182,7 +185,12 @@ export function ResponseViewer({
           </span>
         </span>
       </div>
-      <ResponseBody response={response} view={view} wrap={wrap} />
+      <ResponseBody
+        response={response}
+        view={view}
+        wrap={wrap}
+        onSearchOpen={!focus && onToggleFocus ? onToggleFocus : undefined}
+      />
       {extractOpen && (
         <ExtractDialog
           bodyText={response.body_text ?? ""}
@@ -294,10 +302,13 @@ function ResponseBody({
   response,
   view,
   wrap,
+  onSearchOpen,
 }: {
   response: SendResult;
   view: View;
   wrap: boolean;
+  /** Fires when the Ctrl+F search panel opens (used to enter focus mode). */
+  onSearchOpen?: () => void;
 }) {
   const dark = usePrefersDark();
   const contentType =
@@ -416,6 +427,16 @@ function ResponseBody({
             : []
       : [];
 
+  const searchOpensFocus = EditorView.updateListener.of((u) => {
+    if (
+      onSearchOpen &&
+      searchPanelOpen(u.state) &&
+      !searchPanelOpen(u.startState)
+    ) {
+      onSearchOpen();
+    }
+  });
+
   return (
     <>
       {truncatedNote}
@@ -425,9 +446,11 @@ function ResponseBody({
         readOnly
         height="100%"
         theme={dark ? "dark" : "light"}
-        extensions={
-          wrap ? [...extensions, EditorView.lineWrapping] : extensions
-        }
+        extensions={[
+          ...extensions,
+          searchOpensFocus,
+          ...(wrap ? [EditorView.lineWrapping] : []),
+        ]}
       />
     </>
   );
@@ -452,6 +475,7 @@ function formatSentAt(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    hourCycle: "h23",
   });
   return sameDay ? time : `${d.toLocaleDateString()} ${time}`;
 }

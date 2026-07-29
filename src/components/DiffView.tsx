@@ -135,5 +135,5 @@ function pretty(text: string | null): string {
 }
 
 function shortTime(iso: string): string {
-  return new Date(iso).toLocaleString();
+  return new Date(iso).toLocaleString([], { hourCycle: "h23" });
 }

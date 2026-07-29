@@ -60,7 +60,7 @@ export function WsPanel({ tab }: { tab: Tab }) {
                   : m.text}
             </span>
             <span className="hist-time">
-              {new Date(m.ts).toLocaleTimeString()}
+              {new Date(m.ts).toLocaleTimeString([], { hourCycle: "h23" })}
             </span>
           </div>
         ))}
