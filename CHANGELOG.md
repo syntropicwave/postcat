@@ -6,7 +6,7 @@ the updater manifest, and refuses to release without one. Convention: every
 shipped task bumps the patch version (package.json, tauri.conf.json,
 Cargo.toml, Cargo.lock) and adds a bullet to the top section.
 
-## 0.1.14
+## 0.1.14 — 2026-07-29
 
 - All times display in 24-hour format (last-run stamp, history, diff,
   WebSocket log) regardless of system locale
