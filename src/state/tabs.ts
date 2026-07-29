@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   cancelRequest,
+  historyGet,
   sendRequest,
   wsClose,
   wsConnect,
@@ -53,6 +54,10 @@ export interface Tab {
   sending: boolean;
   response: SendResult | null;
   responseError: SendErrorInfo | null;
+  /// History id of the last outcome shown in this tab. Responses are not
+  /// persisted with the workspace (they can be megabytes); after a restart
+  /// the response pane is rehydrated from history via this id.
+  lastHistoryId: number | null;
   /// Live SSE chunks while the request is streaming.
   streamText: string;
   wsStatus: "closed" | "connecting" | "open";
@@ -119,6 +124,7 @@ function makeTab(partial?: Partial<Tab>): Tab {
     sending: false,
     response: null,
     responseError: null,
+    lastHistoryId: null,
     streamText: "",
     wsStatus: "closed",
     wsMessages: [],
@@ -192,6 +198,7 @@ export function tabFromHistory(detail: HistoryDetail): Partial<Tab> {
     body: spec.body ?? { kind: "none" },
     settings: spec.settings,
     auth: spec.auth ?? { kind: "none" },
+    lastHistoryId: detail.id,
   };
   if (detail.error != null) {
     partial.responseError = {
@@ -216,6 +223,7 @@ export function tabFromHistory(detail: HistoryDetail): Partial<Tab> {
       tests: [],
       console: [],
       script_error: null,
+      sent_at: detail.sent_at,
     };
   }
   return partial;
@@ -390,7 +398,11 @@ export const useTabs = create<TabsState>()(
             tab.preRequestScript || null,
             tab.testScript || null,
           );
-          get().updateTab(id, { sending: false, response: result });
+          get().updateTab(id, {
+            sending: false,
+            response: { ...result, sent_at: new Date().toISOString() },
+            lastHistoryId: result.history_id,
+          });
         } catch (e) {
           get().updateTab(id, {
             sending: false,
@@ -464,10 +476,12 @@ export const useTabs = create<TabsState>()(
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<TabsState>;
-        // section arrived after workspaces were first persisted — default it.
+        // section/lastHistoryId arrived after workspaces were first
+        // persisted — default them.
         let tabs = (p.tabs ?? []).map((t) => ({
           ...t,
           section: t.section ?? "body",
+          lastHistoryId: t.lastHistoryId ?? null,
         })) as Tab[];
         if (tabs.length === 0) tabs = [makeTab()];
         const activeTabId = tabs.some((t) => t.id === p.activeTabId)
@@ -486,3 +500,19 @@ useTabs.setState((s) => ({
     ? s.activeTabId
     : s.tabs[0].id,
 }));
+
+// Rehydrate response panes: the workspace persists only lastHistoryId, the
+// outcome itself lives in the history DB. Entries pruned by retention just
+// leave the pane empty.
+for (const t of useTabs.getState().tabs) {
+  if (t.lastHistoryId == null || t.response || t.responseError) continue;
+  historyGet(t.lastHistoryId)
+    .then((detail) => {
+      const restored = tabFromHistory(detail);
+      useTabs.getState().updateTab(t.id, {
+        response: restored.response ?? null,
+        responseError: restored.responseError ?? null,
+      });
+    })
+    .catch(() => {});
+}

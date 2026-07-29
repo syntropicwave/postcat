@@ -93,6 +93,9 @@ export interface SendResult {
   tests: TestResult[];
   console: ConsoleLine[];
   script_error: string | null;
+  /// ISO timestamp of when the request completed. Not part of the backend
+  /// payload — stamped on the frontend, or taken from history on restore.
+  sent_at?: string;
 }
 
 export interface RunOptions {

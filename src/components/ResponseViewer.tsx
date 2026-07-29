@@ -99,6 +99,15 @@ export function ResponseViewer({
           {response.http_version} · {formatDuration(response.duration_ms)} ·{" "}
           {formatSize(response.size)}
           {response.body_truncated ? " · truncated" : ""}
+          {response.sent_at && (
+            <span
+              className="response-sent-at"
+              title={new Date(response.sent_at).toLocaleString()}
+            >
+              {" · "}
+              {formatSentAt(response.sent_at)}
+            </span>
+          )}
         </span>
         <TimingBar timings={response.timings} />
         <span className="response-views">
@@ -429,6 +438,22 @@ function statusClass(status: number): string {
   if (status >= 300 && status < 400) return "redirect";
   if (status >= 400 && status < 500) return "client-error";
   return "server-error";
+}
+
+/** When the request last ran: time for today, date + time otherwise. */
+function formatSentAt(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  const time = d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  return sameDay ? time : `${d.toLocaleDateString()} ${time}`;
 }
 
 export function formatDuration(ms: number): string {

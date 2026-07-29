@@ -6,6 +6,13 @@ the updater manifest, and refuses to release without one. Convention: every
 shipped task bumps the patch version (package.json, tauri.conf.json,
 Cargo.toml, Cargo.lock) and adds a bullet to the top section.
 
+## 0.1.13
+
+- Responses survive an app restart: each tab reloads its last response (or
+  error) from history on startup
+- The response meta line shows when the request was last executed (time
+  today, date + time otherwise; hover for the full timestamp)
+
 ## 0.1.12 — 2026-07-29
 
 - The in-editor search panel (Ctrl+F) is readable now: larger input and
