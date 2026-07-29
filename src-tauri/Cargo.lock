@@ -3271,7 +3271,7 @@ dependencies = [
 
 [[package]]
 name = "postcat"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "argon2",
  "base64 0.22.1",

@@ -6,6 +6,11 @@ the updater manifest, and refuses to release without one. Convention: every
 shipped task bumps the patch version (package.json, tauri.conf.json,
 Cargo.toml, Cargo.lock) and adds a bullet to the top section.
 
+## 0.1.12
+
+- The in-editor search panel (Ctrl+F) is readable now: larger input and
+  buttons, app-styled colors instead of the tiny library defaults
+
 ## 0.1.11 — 2026-07-28
 
 - The request editor opens on the Body section by default, and each tab

@@ -1198,6 +1198,77 @@ textarea:focus-visible {
   border-bottom: 1px solid var(--border);
 }
 
+/* CodeMirror search panel (Ctrl+F): the library defaults are tiny. Selectors
+   ride on .cm-panels to outrank the editor's injected base styles. */
+.cm-editor .cm-panels {
+  background: var(--bg-panel);
+  color: var(--text);
+}
+.cm-editor .cm-panels-top {
+  border-bottom: 1px solid var(--border);
+}
+.cm-editor .cm-panels .cm-panel.cm-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 8px 34px 8px 10px;
+  font-size: 13px;
+}
+.cm-editor .cm-panels .cm-panel.cm-search input,
+.cm-editor .cm-panels .cm-panel.cm-search button,
+.cm-editor .cm-panels .cm-panel.cm-search label {
+  margin: 0;
+  font-size: 13px;
+}
+.cm-editor .cm-panels .cm-panel.cm-search .cm-textfield {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+}
+.cm-editor .cm-panels .cm-panel.cm-search .cm-button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-hover);
+  background-image: none;
+  color: var(--text);
+  cursor: pointer;
+}
+.cm-editor .cm-panels .cm-panel.cm-search .cm-button:hover {
+  border-color: var(--accent);
+}
+.cm-editor .cm-panels .cm-panel.cm-search label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.cm-editor .cm-panels .cm-panel.cm-search input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.cm-editor .cm-panels .cm-panel.cm-search button[name="close"] {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 6px;
+  border: none;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.cm-editor .cm-panels .cm-panel.cm-search button[name="close"]:hover {
+  color: var(--text);
+}
+
 .error-detail {
   display: flex;
   flex-direction: column;
