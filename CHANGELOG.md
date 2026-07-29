@@ -6,7 +6,7 @@ the updater manifest, and refuses to release without one. Convention: every
 shipped task bumps the patch version (package.json, tauri.conf.json,
 Cargo.toml, Cargo.lock) and adds a bullet to the top section.
 
-## 0.1.13
+## 0.1.13 — 2026-07-29
 
 - Responses survive an app restart: each tab reloads its last response (or
   error) from history on startup
